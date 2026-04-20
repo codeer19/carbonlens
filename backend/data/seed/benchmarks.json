@@ -1,0 +1,40 @@
+{
+    "textile_sme_monthly_kwh": {
+        "Apr": 8200,
+        "May": 8800,
+        "Jun": 9400,
+        "Jul": 9100,
+        "Aug": 8600,
+        "Sep": 7900,
+        "Oct": 7400,
+        "Nov": 7800,
+        "Dec": 8300,
+        "Jan": 8700,
+        "Feb": 8100,
+        "Mar": 8400
+    },
+    "india_grid_emission_factor_kg_co2_per_kwh": 0.716,
+    "avg_electricity_cost_rs_per_kwh": 8,
+    "carbon_score_grades": {
+        "A": [
+            85,
+            100
+        ],
+        "B+": [
+            70,
+            84
+        ],
+        "B": [
+            55,
+            69
+        ],
+        "C": [
+            40,
+            54
+        ],
+        "D": [
+            0,
+            39
+        ]
+    }
+}

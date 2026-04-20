@@ -1,0 +1,516 @@
+/* ── BillScanner ── */
+.bill-scanner {
+  width: 100%;
+}
+
+.scanner-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #E8E8E4);
+  border-radius: 14px;
+  padding: 24px;
+}
+
+/* ── Mode Toggle ── */
+.mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 8px;
+  border: 1.5px solid var(--border-color, #E8E8E4);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn:hover {
+  border-color: #111;
+  background: rgba(0,0,0,0.02);
+}
+
+.mode-btn.active {
+  border-color: #111;
+  background: rgba(0,0,0,0.03);
+  box-shadow: 0 0 0 1px #111;
+}
+
+.mode-icon {
+  font-size: 20px;
+}
+
+.mode-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary, #111);
+}
+
+.mode-desc {
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+}
+
+/* ── Camera Section ── */
+.camera-section {
+  margin-bottom: 16px;
+}
+
+.camera-start-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  border: 2px dashed var(--border-color, #E8E8E4);
+  border-radius: 12px;
+  background: var(--page-bg, #FAFAF8);
+  text-align: center;
+}
+
+.camera-icon-large {
+  font-size: 48px;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F5F5F3;
+  border-radius: 50%;
+}
+
+.camera-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #111);
+  margin: 0;
+}
+
+.camera-hint {
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+  max-width: 360px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.camera-start-btn {
+  margin-top: 8px;
+  padding: 12px 28px !important;
+  font-size: 15px !important;
+}
+
+.camera-error-msg {
+  margin-top: 8px;
+}
+
+/* ── Camera Live View ── */
+.camera-live-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 4/3;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.camera-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.scan-frame {
+  position: relative;
+  width: 80%;
+  height: 70%;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+}
+
+.corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #fff;
+  border-style: solid;
+  border-width: 0;
+}
+
+.corner.tl {
+  top: -2px; left: -2px;
+  border-top-width: 3px; border-left-width: 3px;
+  border-top-left-radius: 8px;
+}
+
+.corner.tr {
+  top: -2px; right: -2px;
+  border-top-width: 3px; border-right-width: 3px;
+  border-top-right-radius: 8px;
+}
+
+.corner.bl {
+  bottom: -2px; left: -2px;
+  border-bottom-width: 3px; border-left-width: 3px;
+  border-bottom-left-radius: 8px;
+}
+
+.corner.br {
+  bottom: -2px; right: -2px;
+  border-bottom-width: 3px; border-right-width: 3px;
+  border-bottom-right-radius: 8px;
+}
+
+.scan-guide-text {
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.8);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  background: rgba(0,0,0,0.5);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+/* ── Camera Controls ── */
+.camera-controls {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.cam-ctrl-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-color, #E8E8E4);
+  background: var(--card-bg, #fff);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.cam-ctrl-btn:hover {
+  border-color: #111;
+  background: #F5F5F3;
+}
+
+.cam-capture-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid #111;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.cam-capture-btn:hover {
+  transform: scale(1.08);
+}
+
+.cam-capture-btn:active {
+  transform: scale(0.95);
+}
+
+.capture-ring {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.cam-capture-btn:hover .capture-ring {
+  background: #333;
+}
+
+.capture-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* ── Captured Preview ── */
+.captured-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.captured-image-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.captured-image {
+  width: 100%;
+  display: block;
+  border-radius: 12px;
+}
+
+.captured-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(22, 101, 52, 0.9);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+
+.retake-btn {
+  font-size: 13px !important;
+}
+
+/* ── Upload Zone ── */
+.upload-zone {
+  border: 2px dashed var(--border-color, #E8E8E4);
+  border-radius: 12px;
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  background: var(--page-bg, #FAFAF8);
+  margin-bottom: 16px;
+}
+
+.upload-zone:hover {
+  border-color: #bbb;
+}
+
+.upload-zone.drag-over {
+  border-color: #111;
+  background: rgba(0,0,0,0.02);
+}
+
+.upload-zone.has-file {
+  cursor: default;
+  padding: 16px;
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.upload-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-icon-circle {
+  font-size: 32px;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F5F5F3;
+  border-radius: 50%;
+  margin-bottom: 4px;
+}
+
+.upload-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #111);
+  margin: 0;
+}
+
+.upload-hint {
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+  margin: 0;
+}
+
+.upload-browse {
+  text-decoration: underline;
+  color: var(--text-primary, #111);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.upload-formats {
+  font-size: 12px;
+  color: var(--text-secondary, #aaa);
+  background: #F5F5F3;
+  padding: 6px 14px;
+  border-radius: 20px;
+  margin-top: 4px;
+}
+
+/* ── File Preview ── */
+.image-preview-wrap {
+  position: relative;
+  max-height: 300px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.image-preview {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.preview-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.6));
+  text-align: center;
+}
+
+.preview-ready {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pdf-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+}
+
+.pdf-icon {
+  font-size: 36px;
+}
+
+.pdf-info {
+  text-align: left;
+}
+
+.pdf-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary, #111);
+  margin: 0;
+}
+
+.pdf-size {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  margin: 4px 0 0 0;
+}
+
+/* ── Pipeline Info ── */
+.pipeline-info {
+  margin-bottom: 16px;
+}
+
+.pipeline-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: var(--page-bg, #FAFAF8);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #E8E8E4);
+}
+
+.pip-step {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #888);
+  white-space: nowrap;
+}
+
+.pip-arrow {
+  font-size: 12px;
+  color: var(--text-secondary, #ccc);
+}
+
+/* ── Error ── */
+.scanner-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #FEF2F2;
+  color: #991B1B;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.error-icon {
+  flex-shrink: 0;
+}
+
+/* ── Actions ── */
+.scanner-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .mode-toggle {
+    grid-template-columns: 1fr;
+  }
+  
+  .video-container {
+    aspect-ratio: 3/4;
+  }
+  
+  .camera-controls {
+    gap: 16px;
+  }
+}

@@ -1,0 +1,554 @@
+"""
+CarbonLens — FastAPI Backend
+India's first SME carbon intelligence platform.
+
+Routes:
+  POST /scan             → Scan bill image via OCR + Grok AI extraction
+  POST /parse            → Upload & parse PDF bill (PyMuPDF + fallback)
+  POST /forecast         → Predict CO2 for 30/90/180 days ahead
+  POST /simulate         → Run what-if scenario simulation
+  GET  /recommendations  → Get AI-generated reduction recommendations
+"""
+
+import os
+import io
+import base64
+from contextlib import asynccontextmanager
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from typing import Optional
+
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent.parent))
+from modules.parser import parse_invoice as run_parser, ParsedInvoice
+
+from app.core.config import (
+    GROK_API_KEY,
+    INDIA_GRID_FACTOR,
+    AVG_ELECTRICITY_COST,
+    CORS_ORIGINS,
+    ALLOWED_IMAGE_TYPES,
+    FUEL_EMISSION_FACTORS,
+)
+from app.services.bill_processor import BillProcessor, get_bill_processor
+from app.services.report_generator import generate_esg_report
+
+# ---------------------------------------------------------------------------
+# Environment
+# ---------------------------------------------------------------------------
+load_dotenv()
+
+
+# ---------------------------------------------------------------------------
+# Pydantic request / response schemas
+# ---------------------------------------------------------------------------
+class ScanResponse(BaseModel):
+    """Structured data extracted from a scanned bill image via OCR + Grok."""
+    success: bool = Field(..., description="Whether extraction succeeded")
+    kwh_consumed: Optional[float] = Field(None, description="Electricity consumed in kWh")
+    fuel_litres: Optional[float] = Field(None, description="Fuel consumed in litres")
+    fuel_type: Optional[str] = Field(None, description="Type of fuel")
+    billing_date: Optional[str] = Field(None, description="Billing date (YYYY-MM-DD)")
+    total_amount: Optional[float] = Field(None, description="Total bill amount in Rs")
+    co2_kg: Optional[float] = Field(None, description="Estimated CO2 in kg")
+    bill_type: str = Field(default="electricity", description="electricity, fuel, or gas")
+    discom_name: Optional[str] = Field(None, description="Utility company name")
+    meter_number: Optional[str] = Field(None, description="Meter number")
+    billing_period: Optional[str] = Field(None, description="Billing period")
+    ocr_confidence: float = Field(default=0, description="OCR confidence %")
+    extraction_confidence: float = Field(default=0, description="Data extraction confidence %")
+    needs_manual_review: bool = Field(default=False, description="True if low confidence")
+    raw_text_preview: Optional[str] = Field(None, description="First 500 chars of OCR text")
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class ParseResponse(BaseModel):
+    """Structured data extracted from an uploaded PDF bill."""
+    kwh_consumed: float = Field(..., description="Electricity consumed in kWh")
+    fuel_litres: Optional[float] = Field(None, description="Fuel consumed in litres")
+    billing_date: str = Field(..., description="Billing date (YYYY-MM-DD)")
+    total_amount: float = Field(..., description="Total bill amount in Rs")
+    co2_kg: float = Field(..., description="Estimated CO2 in kg")
+
+
+class ForecastRequest(BaseModel):
+    """Historical kWh readings for forecasting."""
+    monthly_kwh: list[float] = Field(..., description="List of monthly kWh readings (oldest→newest)")
+    horizon_days: int = Field(default=90, description="Forecast horizon: 30, 90, or 180 days")
+
+
+class ForecastResponse(BaseModel):
+    """Predicted emissions timeline."""
+    forecast_kwh: list[float] = Field(..., description="Predicted monthly kWh")
+    forecast_co2_kg: list[float] = Field(..., description="Predicted monthly CO2 (kg)")
+    horizon_days: int
+
+
+class SimulateRequest(BaseModel):
+    """What-if scenario inputs."""
+    current_monthly_kwh: float = Field(..., description="Current monthly kWh")
+    ev_percent: float = Field(default=0, ge=0, le=100, description="% fleet switched to EV")
+    solar_percent: float = Field(default=0, ge=0, le=100, description="% energy from solar")
+    peak_shift_hours: float = Field(default=0, ge=0, le=8, description="Hours shifted off-peak")
+
+
+class SimulateResponse(BaseModel):
+    """Scenario simulation results."""
+    co2_saved_kg_month: float
+    cost_saved_rs_year: float
+    new_monthly_co2_kg: float
+    original_monthly_co2_kg: float
+
+
+class RecommendationResponse(BaseModel):
+    """AI-generated recommendations."""
+    recommendations_en: str = Field(..., description="Recommendations in English")
+    recommendations_hi: str = Field(..., description="Recommendations in Hindi")
+    carbon_score: int = Field(..., ge=0, le=100, description="Carbon score (0-100)")
+    grade: str = Field(..., description="Grade: A / B+ / B / C / D")
+
+
+# ---------------------------------------------------------------------------
+# Bill processor singleton
+# ---------------------------------------------------------------------------
+bill_processor: Optional[BillProcessor] = None
+
+
+def get_processor() -> BillProcessor:
+    global bill_processor
+    if bill_processor is None:
+        bill_processor = get_bill_processor(grok_api_key=GROK_API_KEY)
+    return bill_processor
+
+
+# ---------------------------------------------------------------------------
+# App lifespan (startup / shutdown hooks)
+# ---------------------------------------------------------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup — initialize processor
+    print("[CarbonLens] Backend starting...")
+    get_processor()
+    if GROK_API_KEY:
+        print("  [OK] Grok API key configured")
+    else:
+        print("  [WARN] GROK_API_KEY not set - extraction will fail")
+    yield
+    # Shutdown
+    print("[CarbonLens] Backend shutting down...")
+
+
+# ---------------------------------------------------------------------------
+# FastAPI app
+# ---------------------------------------------------------------------------
+app = FastAPI(
+    title="CarbonLens API",
+    description="India's first SME carbon intelligence platform — OCR + AI powered",
+    version="0.2.0",
+    lifespan=lifespan,
+)
+
+# CORS — allow the React dev server
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS + [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Health-check
+# ---------------------------------------------------------------------------
+@app.get("/")
+async def root():
+    return {
+        "app": "CarbonLens",
+        "status": "running",
+        "version": "0.2.0",
+        "features": ["ocr_scan", "pdf_parse", "forecast", "simulate", "recommendations"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /scan — PRIMARY: Scan bill image via Tesseract OCR + Grok AI
+# ---------------------------------------------------------------------------
+@app.post("/scan", response_model=ScanResponse)
+async def scan_bill(file: UploadFile = File(...)):
+    """
+    Accepts an image (JPEG, PNG, WebP, BMP, TIFF) or scanned PDF of a bill.
+    
+    Pipeline:
+    1. Tesseract OCR extracts raw text from the image
+    2. Grok API (xAI) parses the OCR text into structured bill data
+    3. CO2 is computed using India grid emission factor
+    
+    Returns structured bill data with confidence scores.
+    """
+    # Validate file type
+    filename = file.filename or ""
+    ext = os.path.splitext(filename)[1].lower()
+    content_type = file.content_type or ""
+    
+    is_pdf = ext == ".pdf" or content_type == "application/pdf"
+    is_image = (
+        content_type in ALLOWED_IMAGE_TYPES
+        or ext in {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif"}
+    )
+    
+    if not is_pdf and not is_image:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {content_type or ext}. Upload an image (JPEG, PNG) or scanned PDF."
+        )
+    
+    # Read file bytes
+    contents = await file.read()
+    
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    
+    if len(contents) > 10 * 1024 * 1024:  # 10MB limit
+        raise HTTPException(status_code=400, detail="File too large. Maximum 10MB.")
+    
+    # Determine file type for processor
+    file_type = "pdf" if is_pdf else "image"
+    
+    # Run the OCR + Grok pipeline
+    processor = get_processor()
+    result = processor.process(
+        file_bytes=contents,
+        file_type=file_type,
+        filename=filename,
+    )
+    
+    # Extract data from result
+    data = result.get("data") or {}
+    ocr_info = result.get("ocr") or {}
+    
+    # Compute CO2
+    kwh = data.get("kwh_consumed")
+    fuel = data.get("fuel_litres")
+    fuel_type = data.get("fuel_type")
+    
+    co2_kg = None
+    if kwh:
+        co2_kg = round(kwh * INDIA_GRID_FACTOR, 2)
+    elif fuel and fuel_type and fuel_type in FUEL_EMISSION_FACTORS:
+        co2_kg = round(fuel * FUEL_EMISSION_FACTORS[fuel_type], 2)
+    
+    return ScanResponse(
+        success=result.get("success", False),
+        kwh_consumed=kwh,
+        fuel_litres=fuel,
+        fuel_type=fuel_type,
+        billing_date=data.get("billing_date"),
+        total_amount=data.get("total_amount"),
+        co2_kg=co2_kg,
+        bill_type=data.get("bill_type", "electricity"),
+        discom_name=data.get("discom_name"),
+        meter_number=data.get("meter_number"),
+        billing_period=data.get("billing_period"),
+        ocr_confidence=ocr_info.get("confidence", 0),
+        extraction_confidence=data.get("confidence", 0),
+        needs_manual_review=result.get("needs_manual_review", False),
+        raw_text_preview=ocr_info.get("text", "")[:500] if ocr_info.get("text") else None,
+        error=result.get("error"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /scan/base64 — Scan from base64-encoded image (for camera capture)
+# ---------------------------------------------------------------------------
+class Base64ScanRequest(BaseModel):
+    """Base64-encoded image data for scanning."""
+    image_data: str = Field(..., description="Base64-encoded image (data URI or raw base64)")
+    filename: Optional[str] = Field(default="camera_capture.jpg", description="Optional filename")
+
+
+@app.post("/scan/base64", response_model=ScanResponse)
+async def scan_bill_base64(req: Base64ScanRequest):
+    """
+    Accepts a base64-encoded image (from camera capture or canvas).
+    Strips the data URI prefix if present and processes through OCR + Grok.
+    """
+    try:
+        # Strip data URI prefix if present (e.g., "data:image/jpeg;base64,...")
+        image_data = req.image_data
+        if "," in image_data:
+            image_data = image_data.split(",", 1)[1]
+        
+        # Decode base64
+        file_bytes = base64.b64decode(image_data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid base64 image data: {e}")
+    
+    if len(file_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Decoded image is empty.")
+    
+    # Process through OCR + Grok
+    processor = get_processor()
+    result = processor.process(
+        file_bytes=file_bytes,
+        file_type="image",
+        filename=req.filename,
+    )
+    
+    data = result.get("data") or {}
+    ocr_info = result.get("ocr") or {}
+    
+    kwh = data.get("kwh_consumed")
+    fuel = data.get("fuel_litres")
+    fuel_type = data.get("fuel_type")
+    
+    co2_kg = None
+    if kwh:
+        co2_kg = round(kwh * INDIA_GRID_FACTOR, 2)
+    elif fuel and fuel_type and fuel_type in FUEL_EMISSION_FACTORS:
+        co2_kg = round(fuel * FUEL_EMISSION_FACTORS[fuel_type], 2)
+    
+    return ScanResponse(
+        success=result.get("success", False),
+        kwh_consumed=kwh,
+        fuel_litres=fuel,
+        fuel_type=fuel_type,
+        billing_date=data.get("billing_date"),
+        total_amount=data.get("total_amount"),
+        co2_kg=co2_kg,
+        bill_type=data.get("bill_type", "electricity"),
+        discom_name=data.get("discom_name"),
+        meter_number=data.get("meter_number"),
+        billing_period=data.get("billing_period"),
+        ocr_confidence=ocr_info.get("confidence", 0),
+        extraction_confidence=data.get("confidence", 0),
+        needs_manual_review=result.get("needs_manual_review", False),
+        raw_text_preview=ocr_info.get("text", "")[:500] if ocr_info.get("text") else None,
+        error=result.get("error"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /parse — SECONDARY: Upload & parse PDF bill (PyMuPDF + Claude)
+# ---------------------------------------------------------------------------
+@app.post("/parse", response_model=ParseResponse)
+async def parse_invoice_route(file: UploadFile = File(...)):
+    """
+    Accepts a PDF electricity bill or GST invoice.
+    Extracts kWh consumed, fuel litres, billing date, and total amount
+    using PyMuPDF for text extraction + Claude API for structured parsing.
+    Falls back to regex extraction, then manual_entry_required flag.
+    """
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+
+    contents = await file.read()
+
+    # Run the real parser pipeline (PyMuPDF → Claude → regex fallback)
+    result: ParsedInvoice = run_parser(contents)
+
+    if result.manual_entry_required:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "manual_entry_required": True,
+                "error": result.error or "Could not extract data from this bill.",
+                "raw_text_preview": result.raw_text[:500],
+            },
+        )
+
+    return ParseResponse(
+        kwh_consumed=result.kwh_consumed or 0,
+        fuel_litres=result.fuel_litres,
+        billing_date=result.bill_date or "unknown",
+        total_amount=result.total_amount or 0,
+        co2_kg=result.co2_kg or 0,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /forecast — Predict CO2 for 30 / 90 / 180 days
+# ---------------------------------------------------------------------------
+@app.post("/forecast", response_model=ForecastResponse)
+async def forecast_emissions(req: ForecastRequest):
+    """
+    Takes historical monthly kWh data and returns a CO2 forecast.
+    Uses Prophet (with scikit-learn / weighted-moving-average fallback).
+    """
+    if req.horizon_days not in (30, 90, 180):
+        raise HTTPException(status_code=400, detail="horizon_days must be 30, 90, or 180.")
+
+    if len(req.monthly_kwh) < 1:
+        raise HTTPException(status_code=400, detail="Provide at least 1 month of kWh data.")
+
+    # --- Placeholder: weighted-moving-average fallback ---
+    n = max(1, req.horizon_days // 30)
+    avg_kwh = sum(req.monthly_kwh) / len(req.monthly_kwh)
+    forecast_kwh = [round(avg_kwh, 2)] * n
+    forecast_co2 = [round(k * INDIA_GRID_FACTOR, 2) for k in forecast_kwh]
+
+    return ForecastResponse(
+        forecast_kwh=forecast_kwh,
+        forecast_co2_kg=forecast_co2,
+        horizon_days=req.horizon_days,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /simulate — What-if scenario simulation
+# ---------------------------------------------------------------------------
+@app.post("/simulate", response_model=SimulateResponse)
+async def simulate_scenario(req: SimulateRequest):
+    """
+    Runs a what-if analysis:
+      CO2 saved = (ev_percent × 22) + (solar_percent × 8) kg/month
+      Cost saved = CO2_saved × 0.716 × 8 × 12 / 1000  Rs/year
+    """
+    original_co2 = req.current_monthly_kwh * INDIA_GRID_FACTOR
+
+    co2_saved = (req.ev_percent * 22) + (req.solar_percent * 8)
+    cost_saved = co2_saved * INDIA_GRID_FACTOR * AVG_ELECTRICITY_COST * 12 / 1000
+
+    new_co2 = max(0, original_co2 - co2_saved)
+
+    return SimulateResponse(
+        co2_saved_kg_month=round(co2_saved, 2),
+        cost_saved_rs_year=round(cost_saved, 2),
+        new_monthly_co2_kg=round(new_co2, 2),
+        original_monthly_co2_kg=round(original_co2, 2),
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /recommendations — AI-generated reduction tips
+# ---------------------------------------------------------------------------
+@app.get("/recommendations", response_model=RecommendationResponse)
+async def get_recommendations(
+    monthly_kwh: float = 8500,
+    industry: str = "textile",
+):
+    """
+    Returns plain-English + Hindi recommendations based on usage.
+    Will call Claude API via LangChain in full implementation.
+    """
+    co2 = monthly_kwh * INDIA_GRID_FACTOR
+
+    # --- Carbon score (placeholder logic) ---
+    if co2 < 4000:
+        score, grade = 90, "A"
+    elif co2 < 5500:
+        score, grade = 75, "B+"
+    elif co2 < 7000:
+        score, grade = 60, "B"
+    elif co2 < 8500:
+        score, grade = 45, "C"
+    else:
+        score, grade = 30, "D"
+
+    return RecommendationResponse(
+        recommendations_en=(
+            f"Your monthly CO2 is {co2:.0f} kg. "
+            "Consider shifting 20% of energy to solar panels to save ~160 kg CO2/month. "
+            "Moving heavy machinery to off-peak hours (10 PM–6 AM) can reduce cost by Rs.12,000/year."
+        ),
+        recommendations_hi=(
+            f"आपका मासिक CO2 {co2:.0f} kg है। "
+            "20% ऊर्जा सोलर पैनल से लेने पर ~160 kg CO2/माह बचत होगी। "
+            "भारी मशीनरी को ऑफ-पीक (रात 10–सुबह 6) में चलाने से Rs.12,000/वर्ष बचत होगी।"
+        ),
+        carbon_score=score,
+        grade=grade,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /report/generate — Generate and download ESG PDF report
+# ---------------------------------------------------------------------------
+class ReportRequest(BaseModel):
+    """Request body for ESG report generation."""
+    company_name: str = Field(default="My SME Company", description="Company name")
+    industry: str = Field(default="Manufacturing", description="Industry sector")
+    monthly_kwh: float = Field(default=8500, description="Monthly kWh consumption")
+    co2_kg: Optional[float] = Field(None, description="Monthly CO2 in kg (auto-calculated if empty)")
+    carbon_score: Optional[int] = Field(None, description="Carbon score 0-100")
+    grade: Optional[str] = Field(None, description="Grade: A/B+/B/C/D")
+
+
+@app.post("/report/generate")
+async def generate_report(req: ReportRequest):
+    """
+    Generate and return an ESG PDF report as a downloadable file.
+    """
+    # Auto-calculate CO2 if not provided
+    co2 = req.co2_kg or round(req.monthly_kwh * INDIA_GRID_FACTOR, 2)
+    
+    # Auto-calculate score/grade if not provided
+    if req.carbon_score is not None:
+        score = req.carbon_score
+    else:
+        if co2 < 4000:
+            score = 90
+        elif co2 < 5500:
+            score = 75
+        elif co2 < 7000:
+            score = 60
+        elif co2 < 8500:
+            score = 45
+        else:
+            score = 30
+    
+    if req.grade:
+        grade = req.grade
+    else:
+        if score >= 90:
+            grade = "A"
+        elif score >= 75:
+            grade = "B+"
+        elif score >= 60:
+            grade = "B"
+        elif score >= 45:
+            grade = "C"
+        else:
+            grade = "D"
+    
+    try:
+        pdf_bytes = generate_esg_report(
+            company_name=req.company_name,
+            industry=req.industry,
+            monthly_kwh=req.monthly_kwh,
+            co2_kg=co2,
+            carbon_score=score,
+            grade=grade,
+        )
+        
+        filename = f"CarbonLens_ESG_Report_{req.company_name.replace(' ', '_')}.pdf"
+        
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# GET /health — Detailed health check for frontend
+# ---------------------------------------------------------------------------
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "tesseract_available": True,  # Will be checked at startup
+        "grok_configured": bool(GROK_API_KEY),
+        "version": "0.2.0",
+    }

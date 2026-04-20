@@ -1,0 +1,82 @@
+.dashboard {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.dashboard-header h1 {
+  margin-bottom: 0;
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metric-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.metric-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.metric-trend {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.metric-trend.good {
+  color: var(--badge-good-text);
+}
+
+.metric-trend.warning {
+  color: var(--badge-warning-text);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.chart-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chart-wrapper {
+  width: 100%;
+  min-height: 280px;
+}
+
+.score-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.score-card h3 {
+  align-self: flex-start;
+  margin-bottom: 8px;
+}
+
+.score-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 8px;
+}

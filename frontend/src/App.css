@@ -1,0 +1,111 @@
+/* App-level overrides & additions */
+
+/* ── Report Card ── */
+.report-card {
+  text-align: center;
+  padding: 48px 24px;
+  max-width: 600px;
+}
+
+.report-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.report-icon-wrap {
+  margin-bottom: 20px;
+}
+
+.report-icon-bg {
+  font-size: 48px;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F0FDF4;
+  border-radius: 20px;
+  border: 1px solid rgba(22,101,52,0.1);
+}
+
+.report-features {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 28px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.report-feature {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--page-bg);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.report-feature-icon {
+  font-size: 16px;
+}
+
+.report-btn {
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.25s;
+}
+
+.report-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.report-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #FEF2F2;
+  color: #991B1B;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ── Spinner ── */
+.btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Back to Home button ── */
+.back-home-btn {
+  color: var(--text-secondary) !important;
+  font-size: 13px !important;
+  margin-bottom: 4px;
+}
+
+.back-home-btn:hover {
+  color: var(--text-primary) !important;
+  background: var(--page-bg) !important;
+}

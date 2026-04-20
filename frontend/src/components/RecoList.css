@@ -1,0 +1,40 @@
+.reco-list-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reco-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lang-toggle {
+  background: var(--page-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-btn);
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.reco-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reco-item {
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.reco-bullet {
+  color: var(--text-secondary);
+}

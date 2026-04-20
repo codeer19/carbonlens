@@ -1,0 +1,244 @@
+/* ============================================================
+   ScanResults — Minimal white design system
+   ============================================================ */
+
+.scan-results {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.results-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
+  padding: 28px;
+}
+
+/* ── Status Header ── */
+.results-status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: var(--radius-btn);
+  margin-bottom: 24px;
+}
+
+.results-status.success {
+  background: var(--badge-good-bg);
+  border: 1px solid #BBF7D0;
+}
+
+.results-status.failed {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+}
+
+.status-icon {
+  font-size: 1.5rem;
+}
+
+.status-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.status-method {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* ── Data Grid ── */
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.data-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: var(--page-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-btn);
+  transition: all 0.2s;
+}
+
+.data-card:hover {
+  border-color: #ccc;
+}
+
+.data-card.highlight {
+  border-color: #111;
+}
+
+.data-card.accent .data-value {
+  color: var(--badge-good-text);
+}
+
+.data-card.empty {
+  opacity: 0.5;
+}
+
+.data-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.data-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.data-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.data-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 2px;
+  word-break: break-word;
+}
+
+.data-unit {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+/* ── Confidence ── */
+.confidence-section {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: var(--page-bg);
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border-color);
+}
+
+.confidence-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.confidence-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conf-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.conf-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.conf-bar-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.conf-bar-value {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.conf-bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--border-color);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.conf-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 1s ease-out;
+}
+
+/* ── Review Warning ── */
+.review-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--badge-warning-bg);
+  border: 1px solid #FDE68A;
+  border-radius: var(--radius-btn);
+  color: var(--badge-warning-text);
+  font-size: 0.82rem;
+  margin-bottom: 16px;
+}
+
+/* ── Error Detail ── */
+.error-detail {
+  padding: 20px;
+  background: var(--page-bg);
+  border-radius: var(--radius-btn);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.raw-text-details {
+  margin-top: 12px;
+}
+
+.raw-text-details summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.raw-text {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-btn);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Actions ── */
+.results-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 8px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 520px) {
+  .results-card { padding: 18px; }
+  .results-grid { grid-template-columns: 1fr; }
+  .data-card { padding: 12px; }
+}
