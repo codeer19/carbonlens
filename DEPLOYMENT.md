@@ -46,17 +46,14 @@ Vercel is the best platform for Vite/React applications.
 
 ---
 
-## 3. Alternative: Vercel Multi-Service (Monorepo)
+## 3. Important: Why Render for Backend?
 
-If you want to host both frontend and backend on Vercel using the same project, we have added a `vercel.json` to the root.
+You may encounter a **Bundle Size Error** (e.g., "exceeds Lambda ephemeral storage limit") if you attempt to host the backend on Vercel. 
 
-**Important Note:** Vercel's native Python runtime does **not** include Tesseract OCR. If you use this method, the "Camera Scan" and "Image Scan" features will rely solely on the Groq Vision fallback, which is slightly less robust than the full OCR pipeline. For the best experience, we still recommend **Render** for the backend.
-
-### Setup for Monorepo:
-1. Ensure `vercel.json` is in your root directory.
-2. In Vercel, import the **Root** of your repository (not just the `frontend` folder).
-3. Vercel will automatically detect the services.
-4. Set `VITE_API_BASE_URL` to `/_/backend`.
+**Why this happens:**
+- Our backend uses heavy machine learning and OCR libraries (**XGBoost, Prophet, OpenCV, Tesseract**).
+- Together, these exceed Vercel's 500MB serverless function limit (reaching ~1.3 GB).
+- **Render** uses Docker containers, which have much larger limits and allow us to install system tools like Tesseract OCR natively.
 
 ---
 
