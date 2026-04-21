@@ -57,7 +57,7 @@ class BillProcessor:
         self.groq_base_url = 'https://api.groq.com/openai/v1/chat/completions'
         self.groq_model = 'llama-3.3-70b-versatile'
         # Multimodal model for vision/fallback tasks
-        self.groq_vision_model = 'meta-llama/llama-4-scout-17b-16e-instruct'
+        self.groq_vision_model = 'llama-3.2-90b-vision-preview'
         
         # Try to initialize OCR service if Tesseract is available
         self.ocr_service = None
@@ -199,7 +199,7 @@ class BillProcessor:
             }
         
         # Override the vision model specifically for this fallback
-        self.groq_vision_model = 'meta-llama/llama-4-scout-17b-16e-instruct'
+        self.groq_vision_model = 'llama-3.2-90b-vision-preview'
         
         try:
             import requests

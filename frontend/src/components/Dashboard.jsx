@@ -8,7 +8,7 @@ export default function Dashboard({ scanResult }) {
   const kwh = scanResult?.kwh_consumed || 0;
   const co2 = scanResult?.co2_kg || 0;
   const amount = scanResult?.total_amount || 0;
-  const hasData = kwh > 0 || co2 > 0;
+  const hasData = !!scanResult;
 
   // Score logic
   const getScoreGrade = (co2) => {
@@ -84,7 +84,7 @@ export default function Dashboard({ scanResult }) {
       </div>
 
       <div className="grid-2">
-        <SimulatorPanel currentKwh={kwh || 8500} />
+        <SimulatorPanel currentKwh={kwh || 8500} originalCo2={co2 > 0 ? co2 : undefined} />
         <RecoList monthlyKwh={kwh} co2Kg={co2} />
       </div>
     </div>

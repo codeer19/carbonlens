@@ -43,7 +43,7 @@ function App() {
   const liveKwh = scanResult?.kwh_consumed || 0;
   const liveCo2 = scanResult?.co2_kg || 0;
   const liveAmount = scanResult?.total_amount || 0;
-  const hasData = liveKwh > 0 || liveCo2 > 0;
+  const hasData = !!scanResult;
 
   // Carbon scoring logic (mirrors backend)
   const getScoreGrade = (co2) => {
@@ -113,7 +113,7 @@ function App() {
   const forecast90 = forecastData.filter(d => d.forecast && !d.actual).slice(0, 3).reduce((s, d) => s + d.forecast, 0);
 
   // Original CO2 for simulator
-  const originalCo2 = liveKwh > 0 ? Math.round(liveKwh * 0.716) : Math.round(8500 * 0.716);
+  const originalCo2 = liveCo2 > 0 ? liveCo2 : (liveKwh > 0 ? Math.round(liveKwh * 0.716) : Math.round(8500 * 0.716));
 
   if (showHomepage) {
     return <Homepage onGetStarted={handleGetStarted} />;
