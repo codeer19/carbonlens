@@ -46,11 +46,21 @@ Vercel is the best platform for Vite/React applications.
 
 ---
 
-## 3. Post-Deployment: Connecting the Two
+## 3. Alternative: Vercel Multi-Service (Monorepo)
 
-Once the frontend is deployed, you will get a Vercel URL (e.g., `https://carbonlens-v1.vercel.app`).
+If you want to host both frontend and backend on Vercel using the same project, we have added a `vercel.json` to the root.
 
-1. Go back to your **Render Web Service settings**.
+**Important Note:** Vercel's native Python runtime does **not** include Tesseract OCR. If you use this method, the "Camera Scan" and "Image Scan" features will rely solely on the Groq Vision fallback, which is slightly less robust than the full OCR pipeline. For the best experience, we still recommend **Render** for the backend.
+
+### Setup for Monorepo:
+1. Ensure `vercel.json` is in your root directory.
+2. In Vercel, import the **Root** of your repository (not just the `frontend` folder).
+3. Vercel will automatically detect the services.
+4. Set `VITE_API_BASE_URL` to `/_/backend`.
+
+---
+
+## 4. Post-Deployment: Connecting the Two
 2. Update the `CORS_ORIGINS` environment variable to include your Vercel URL.
    - Example: `https://carbonlens-v1.vercel.app,http://localhost:5173`
 3. Render will redeploy automatically.
