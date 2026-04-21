@@ -4,10 +4,10 @@
  * All prediction endpoints use real XGBoost ML models with confidence levels.
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? 'http://localhost:8000' 
-    : window.location.origin.replace(/:[0-9]+$/, '') + ':8000'); // Fallback for local network tests
+    : window.location.origin.replace(/:[0-9]+$/, '') + ':8000')).replace(/\/$/, ''); // Remove trailing slash if any
 
 /**
  * Scan a bill image via OCR + Groq AI extraction.
