@@ -18,7 +18,7 @@ Ensure there is a `Dockerfile` in the `backend/` directory. (One has been create
 4. Configure the service:
    - **Name**: `carbonlens-backend`
    - **Root Directory**: `backend` (Important!)
-   - **Language**: `Docker`
+   - **Runtime**: Select **Docker** (CRITICAL: Do NOT select 'Python' here, otherwise Tesseract will not work)
 5. Click **Advanced** to add **Environment Variables**:
    - `GROQ_API_KEY`: Your API key from [console.groq.com](https://console.groq.com/)
    - `CORS_ORIGINS`: `https://your-frontend-url.vercel.app` (Set this after deploying frontend)

@@ -22,14 +22,21 @@ logger = logging.getLogger(__name__)
 TESSERACT_AVAILABLE = False
 try:
     import pytesseract
-    # Auto-configure Windows path
+    # Auto-configure Windows path if exists
     if TESSERACT_PATH and os.path.exists(TESSERACT_PATH):
         pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+    else:
+        # On Linux/Docker, tesseract should be in the PATH
+        # We can try to find it
+        import shutil
+        tesseract_bin = shutil.whoami('tesseract') if hasattr(shutil, 'whoami') else shutil.which('tesseract')
+        if tesseract_bin:
+            pytesseract.pytesseract.tesseract_cmd = tesseract_bin
     
     # Quick check if tesseract binary exists and is functional
     pytesseract.get_tesseract_version()
     TESSERACT_AVAILABLE = True
-    logger.info("Tesseract OCR is available")
+    logger.info(f"Tesseract OCR is available at: {pytesseract.pytesseract.tesseract_cmd}")
 except Exception as e:
     logger.warning(f"Tesseract OCR not available: {e} — using Groq Vision fallback")
 
