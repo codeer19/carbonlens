@@ -54,6 +54,15 @@ body {
   overflow-x: hidden;
 }
 
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+  .main-content {
+    padding: 20px 16px 90px 16px; /* 90px bottom padding to clear the 70px bottom nav */
+  }
+}
+
 /* Common Components */
 .card {
   background-color: var(--card-bg);

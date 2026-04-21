@@ -9,6 +9,8 @@ opencv-python
 prophet
 pandas
 scikit-learn
+xgboost
+joblib
 python-dotenv
 reportlab
 pydantic

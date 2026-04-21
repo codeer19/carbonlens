@@ -40,8 +40,8 @@
   color: #111;
 }
 
-.home-nav-icon {
-  font-size: 1.3rem;
+.brand-icon {
+  color: #166534;
 }
 
 .home-nav-links {
@@ -235,6 +235,12 @@
   gap: 8px;
   font-size: 0.82rem;
   color: #999;
+}
+
+.trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .trust-divider {
@@ -445,8 +451,11 @@
 }
 
 .step-icon {
-  font-size: 2rem;
+  color: #166534;
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .step-title {
@@ -540,9 +549,12 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 }
 
-.cta-icon {
-  font-size: 2.5rem;
+.cta-icon-wrap {
   margin-bottom: 16px;
+}
+
+.cta-leaf-icon {
+  color: #166534;
 }
 
 .cta-title {

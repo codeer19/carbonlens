@@ -20,8 +20,8 @@ Three-layer extraction pipeline for electricity bills and GST invoices:
       return a JSON response with manual_required: true.
 
 On success from either Layer 1 or Layer 2, the extracted text is sent
-to the Grok API (xAI, model: grok-3-mini-fast-beta) with a structured
-prompt to extract: kwh, fuel_litres, bill_date (YYYY-MM),
+to the Groq API (Llama 3.3-70B-Versatile) with a structured prompt
+to extract: kwh, fuel_litres, bill_date (YYYY-MM),
 total_amount, and discom_name — returned as clean JSON.
 
 NOTE FOR WINDOWS USERS:
@@ -32,7 +32,7 @@ NOTE FOR WINDOWS USERS:
     On Linux/macOS, install via package manager (apt/brew install tesseract-ocr).
 
 Privacy-first: Only the plain extracted text (not the raw PDF/image)
-is sent to the Grok API.
+is sent to the Groq API.
 """
 
 import json
@@ -47,6 +47,7 @@ import pytesseract
 import requests
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+from app.core.config import TESSERACT_PATH
 
 load_dotenv()
 
@@ -55,18 +56,15 @@ load_dotenv()
 # tesseract_cmd path for Windows. Example:
 #   pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 # ---------------------------------------------------------------------------
-
-# Auto-configure Tesseract path for Windows if the default install exists
-_WINDOWS_TESSERACT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-if os.path.exists(_WINDOWS_TESSERACT):
-    pytesseract.pytesseract.tesseract_cmd = _WINDOWS_TESSERACT
+if TESSERACT_PATH and os.path.exists(TESSERACT_PATH):
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-GROK_API_KEY = os.getenv("GROK_API_KEY", "")
-GROK_API_URL = "https://api.x.ai/v1/chat/completions"
-GROK_MODEL = "grok-3-mini-fast-beta"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 
 INDIA_GRID_FACTOR = 0.716  # kg CO2 per kWh (CEA 2024)
 
@@ -191,26 +189,27 @@ def layer2_ocr_scanned_bill(pdf_bytes: bytes) -> str:
 # ---------------------------------------------------------------------------
 # Grok API — Send extracted text for structured field extraction
 # ---------------------------------------------------------------------------
-def extract_fields_with_grok(raw_text: str) -> dict:
+def extract_fields_with_groq(raw_text: str) -> dict:
     """
-    Sends extracted bill text to the Grok API (xAI) and asks for
+    Sends extracted bill text to the Groq API (Llama 3.3-70B) and asks for
     structured JSON output with: kwh, fuel_litres, bill_date,
     total_amount, discom_name.
 
     Returns parsed dict or raises on failure.
     """
-    if not GROK_API_KEY:
+    if not GROQ_API_KEY:
         raise RuntimeError(
-            "GROK_API_KEY is not set. Add it to your .env file."
+            "GROQ_API_KEY is not set. Add it to your .env file. "
+            "Get a free key at https://console.groq.com/"
         )
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {GROK_API_KEY}",
+        "Authorization": f"Bearer {GROQ_API_KEY}",
     }
 
     payload = {
-        "model": GROK_MODEL,
+        "model": GROQ_MODEL,
         "messages": [
             {
                 "role": "system",
@@ -232,14 +231,14 @@ def extract_fields_with_grok(raw_text: str) -> dict:
 
     try:
         response = requests.post(
-            GROK_API_URL,
+            GROQ_API_URL,
             headers=headers,
             json=payload,
             timeout=30,
         )
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"Grok API request failed: {e}")
+        raise RuntimeError(f"Groq API request failed: {e}")
 
     # Parse the API response
     resp_json = response.json()
@@ -247,13 +246,13 @@ def extract_fields_with_grok(raw_text: str) -> dict:
     try:
         response_text = resp_json["choices"][0]["message"]["content"].strip()
     except (KeyError, IndexError) as e:
-        raise ValueError(f"Unexpected Grok API response format: {e}")
+        raise ValueError(f"Unexpected Groq API response format: {e}")
 
     # Extract JSON from the response (handle markdown fences if any)
     json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
     if not json_match:
         raise ValueError(
-            f"Grok did not return valid JSON. Response: {response_text[:300]}"
+            f"Groq did not return valid JSON. Response: {response_text[:300]}"
         )
 
     return json.loads(json_match.group())
@@ -274,7 +273,7 @@ def parse_invoice(pdf_bytes: bytes) -> ParsedInvoice:
 
       Layer 3: Both failed → return manual_required: true.
 
-    On success from Layer 1 or 2, sends text to Grok API for structured
+    On success from Layer 1 or 2, sends text to Groq API for structured
     field extraction (kwh, fuel_litres, bill_date, total_amount, discom_name).
     """
 
@@ -289,9 +288,9 @@ def parse_invoice(pdf_bytes: bytes) -> ParsedInvoice:
         if len(digital_text.strip()) > MIN_TEXT_THRESHOLD:
             raw_text = digital_text
             extraction_layer = "digital"
-            print(f"  ✅ Layer 1 (digital): extracted {len(raw_text)} chars")
+            print(f"  [OK] Layer 1 (digital): extracted {len(raw_text)} chars")
     except RuntimeError as e:
-        print(f"  ⚠️  Layer 1 (digital) failed: {e}")
+        print(f"  [WARN] Layer 1 (digital) failed: {e}")
 
     # -----------------------------------------------------------------------
     # Layer 2 — OCR for scanned / physical bills
@@ -302,17 +301,17 @@ def parse_invoice(pdf_bytes: bytes) -> ParsedInvoice:
             if len(ocr_text.strip()) > MIN_TEXT_THRESHOLD:
                 raw_text = ocr_text
                 extraction_layer = "ocr"
-                print(f"  ✅ Layer 2 (OCR): extracted {len(raw_text)} chars")
+                print(f"  [OK] Layer 2 (OCR): extracted {len(raw_text)} chars")
             else:
-                print(f"  ⚠️  Layer 2 (OCR): only {len(ocr_text.strip())} chars — insufficient")
+                print(f"  [WARN] Layer 2 (OCR): only {len(ocr_text.strip())} chars — insufficient")
         except RuntimeError as e:
-            print(f"  ⚠️  Layer 2 (OCR) failed: {e}")
+            print(f"  [WARN] Layer 2 (OCR) failed: {e}")
 
     # -----------------------------------------------------------------------
     # Layer 3 — Both layers failed → manual entry required
     # -----------------------------------------------------------------------
     if not extraction_layer:
-        print("  ❌ Layer 3: both extraction methods failed — manual entry required")
+        print("  [ERROR] Layer 3: both extraction methods failed — manual entry required")
         return ParsedInvoice(
             raw_text=raw_text[:2000] if raw_text else "",
             extraction_layer=None,
@@ -325,16 +324,16 @@ def parse_invoice(pdf_bytes: bytes) -> ParsedInvoice:
         )
 
     # -----------------------------------------------------------------------
-    # Success — Send extracted text to Grok API for structured extraction
+    # Success — Send extracted text to Groq API for structured extraction
     # -----------------------------------------------------------------------
     try:
-        fields = extract_fields_with_grok(raw_text)
+        fields = extract_fields_with_groq(raw_text)
     except Exception as e:
         return ParsedInvoice(
             raw_text=raw_text[:2000],
             extraction_layer=extraction_layer,
             manual_entry_required=True,
-            error=f"Text was extracted ({extraction_layer}) but Grok API parsing failed: {e}",
+            error=f"Text was extracted ({extraction_layer}) but Groq API parsing failed: {e}",
         )
 
     # Compute CO2 if kWh is available
@@ -354,5 +353,5 @@ def parse_invoice(pdf_bytes: bytes) -> ParsedInvoice:
         raw_text=raw_text[:2000],
         extraction_layer=extraction_layer,
         manual_entry_required=manual_required,
-        error=None if not manual_required else "Grok could not extract key fields from the bill text.",
+        error=None if not manual_required else "Groq could not extract key fields from the bill text.",
     )

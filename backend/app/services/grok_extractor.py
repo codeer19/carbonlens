@@ -1,6 +1,6 @@
 """
-Grok API Integration for CarbonLens
-Extracts structured data from OCR text using Grok's xAI API.
+Groq API Integration for CarbonLens
+Extracts structured data from OCR text using Groq's Llama 3.3-70B model.
 """
 
 import os
@@ -12,7 +12,7 @@ from datetime import datetime
 
 @dataclass
 class ExtractedBillData:
-    """Structured bill data extracted by Grok."""
+    """Structured bill data extracted by Llama 3.3-70B via Groq."""
     kwh_consumed: Optional[float] = None
     billing_date: Optional[str] = None
     total_amount: Optional[float] = None
@@ -39,23 +39,23 @@ class ExtractedBillData:
         }
 
 
-class GrokExtractor:
-    """Service to extract structured bill data using Grok API."""
+class GroqExtractor:
+    """Service to extract structured bill data using Groq API (Llama 3.3-70B)."""
     
     def __init__(self, api_key: Optional[str] = None):
         """
-        Initialize Grok extractor.
+        Initialize Groq extractor.
         
         Args:
-            api_key: Grok API key (or from GROK_API_KEY env var)
+            api_key: Groq API key (or from GROQ_API_KEY env var)
         """
-        self.api_key = api_key or os.getenv('GROK_API_KEY')
-        self.base_url = 'https://api.x.ai/v1/chat/completions'
-        self.model = 'grok-2-latest'
+        self.api_key = api_key or os.getenv('GROQ_API_KEY')
+        self.base_url = 'https://api.groq.com/openai/v1/chat/completions'
+        self.model = 'llama-3.3-70b-versatile'
     
     def _build_prompt(self, ocr_text: str) -> str:
         """
-        Build extraction prompt for Grok.
+        Build extraction prompt for Llama 3.3-70B.
         """
         prompt = f"""You are an expert at extracting structured data from Indian utility bills.
         The text below is OCR output from an electricity bill, fuel invoice, or gas bill.
@@ -88,9 +88,9 @@ class GrokExtractor:
         
         return prompt
     
-    def _parse_grok_response(self, response_text: str) -> ExtractedBillData:
+    def _parse_response(self, response_text: str) -> ExtractedBillData:
         """
-        Parse Grok's JSON response into ExtractedBillData.
+        Parse Llama's JSON response into ExtractedBillData.
         """
         try:
             # Clean up response (remove markdown code blocks if present)
@@ -165,7 +165,7 @@ class GrokExtractor:
     
     def extract(self, ocr_text: str) -> Dict[str, Any]:
         """
-        Extract structured data from OCR text using Grok API.
+        Extract structured data from OCR text using Groq API (Llama 3.3-70B).
         
         Args:
             ocr_text: Raw OCR text from Tesseract
@@ -176,12 +176,12 @@ class GrokExtractor:
         if not self.api_key:
             return {
                 'success': False,
-                'error': 'Grok API key not configured. Set GROK_API_KEY environment variable.',
+                'error': 'Groq API key not configured. Set GROQ_API_KEY environment variable.',
                 'data': ExtractedBillData().to_dict()
             }
         
         try:
-            # Import here to avoid dependency if not using Grok
+            # Import here to avoid dependency if not using Groq
             import requests
             
             prompt = self._build_prompt(ocr_text)
@@ -211,7 +211,7 @@ class GrokExtractor:
             if response.status_code != 200:
                 return {
                     'success': False,
-                    'error': f'Grok API error: {response.status_code} - {response.text}',
+                    'error': f'Groq API error: {response.status_code} - {response.text}',
                     'data': ExtractedBillData().to_dict()
                 }
             
@@ -219,7 +219,7 @@ class GrokExtractor:
             extracted_text = result['choices'][0]['message']['content']
             
             # Parse the extracted data
-            bill_data = self._parse_grok_response(extracted_text)
+            bill_data = self._parse_response(extracted_text)
             
             return {
                 'success': True,
@@ -237,14 +237,14 @@ class GrokExtractor:
 
 
 # Singleton instance (will be initialized with API key when provided)
-grok_extractor: Optional[GrokExtractor] = None
+groq_extractor: Optional[GroqExtractor] = None
 
 
-def initialize_grok(api_key: Optional[str] = None):
-    """Initialize the Grok extractor singleton."""
-    global grok_extractor
-    grok_extractor = GrokExtractor(api_key)
-    return grok_extractor
+def initialize_groq(api_key: Optional[str] = None):
+    """Initialize the Groq extractor singleton."""
+    global groq_extractor
+    groq_extractor = GroqExtractor(api_key)
+    return groq_extractor
 
 
 def extract_bill_data(ocr_text: str) -> Dict[str, Any]:
@@ -257,9 +257,9 @@ def extract_bill_data(ocr_text: str) -> Dict[str, Any]:
     Returns:
         Extraction result dict
     """
-    global grok_extractor
-    if grok_extractor is None:
+    global groq_extractor
+    if groq_extractor is None:
         # Try to initialize from environment
-        grok_extractor = GrokExtractor()
+        groq_extractor = GroqExtractor()
     
-    return grok_extractor.extract(ocr_text)
+    return groq_extractor.extract(ocr_text)

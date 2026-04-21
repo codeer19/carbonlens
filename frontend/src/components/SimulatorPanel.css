@@ -1,13 +1,22 @@
-.simulator-panel {
+/* ── SimulatorPanel v2 ── */
+.simulator-panel-v2 {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
+.sim-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .sliders-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .slider-group {
@@ -20,12 +29,71 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
 }
 
 .slider-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+  background: var(--page-bg);
+  padding: 2px 10px;
+  border-radius: 6px;
+}
+
+.slider-hint {
+  font-size: 12px;
   color: var(--text-secondary);
+  margin-top: -2px;
+}
+
+.sim-results-v2 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 20px;
+}
+
+.sim-result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background: var(--page-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.sim-result-card.savings {
+  background: #F0FDF4;
+  border-color: rgba(22,101,52,0.15);
+}
+
+.sim-result-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.sim-result-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sim-result-card.savings .sim-result-value {
+  color: #166534;
+}
+
+/* Legacy support for dashboard SimulatorPanel */
+.simulator-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .sim-results {
@@ -56,4 +124,10 @@
 
 .sim-value.good {
   color: var(--badge-good-text);
+}
+
+@media (max-width: 700px) {
+  .sim-results-v2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

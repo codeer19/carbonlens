@@ -9,6 +9,7 @@ from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
 from typing import Optional, Dict, Any
 import cv2
+from app.core.config import TESSERACT_PATH, POPPLER_PATH
 
 
 class OCRService:
@@ -22,6 +23,10 @@ class OCRService:
             lang: Tesseract language pack (default: English + Hindi)
         """
         self.lang = lang
+        # Configure tesseract path
+        if TESSERACT_PATH and os.path.exists(TESSERACT_PATH):
+            pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+        
         # Configure tesseract for better accuracy on bills
         self.config = '--psm 6 --oem 3'  # Assume single uniform block of text
     
@@ -140,7 +145,7 @@ class OCRService:
             from pdf2image import convert_from_bytes
             
             # Convert PDF to images (300 DPI for good OCR)
-            images = convert_from_bytes(pdf_bytes, dpi=300)
+            images = convert_from_bytes(pdf_bytes, dpi=300, poppler_path=POPPLER_PATH)
             
             all_texts = []
             page_results = []

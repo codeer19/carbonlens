@@ -1,5 +1,69 @@
 /* App-level overrides & additions */
 
+/* ── Simulator Page Layout ── */
+.simulator-page-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.simulator-main-card {
+  min-height: 0;
+}
+
+.simulator-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sim-page-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sim-page-stat:last-child {
+  border-bottom: none;
+}
+
+.sim-page-stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sim-page-stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ── AI Insights Page Layout ── */
+.insights-page-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.insights-main {
+  min-height: 0;
+}
+
+.insights-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .simulator-page-layout,
+  .insights-page-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Report Card ── */
 .report-card {
   text-align: center;
@@ -18,7 +82,6 @@
 }
 
 .report-icon-bg {
-  font-size: 48px;
   width: 80px;
   height: 80px;
   display: flex;
@@ -51,7 +114,9 @@
 }
 
 .report-feature-icon {
-  font-size: 16px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .report-btn {

@@ -12,8 +12,14 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # API Keys
 # ---------------------------------------------------------------------------
-GROK_API_KEY = os.getenv("GROK_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+# ---------------------------------------------------------------------------
+# LLM Configuration (Groq — Llama 3.3-70B)
+# ---------------------------------------------------------------------------
+GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ---------------------------------------------------------------------------
 # Carbon Emission Factors (India-specific)
@@ -32,9 +38,11 @@ FUEL_EMISSION_FACTORS = {
 # ---------------------------------------------------------------------------
 # OCR Settings
 # ---------------------------------------------------------------------------
+TESSERACT_PATH = os.getenv("TESSERACT_PATH", r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+POPPLER_PATH = os.getenv("POPPLER_PATH", None)  # Path to poppler/bin
 OCR_LANG = "eng+hin"
 OCR_MIN_CONFIDENCE = 60      # Minimum OCR confidence %
-EXTRACTION_MIN_CONFIDENCE = 50  # Minimum Grok extraction confidence %
+EXTRACTION_MIN_CONFIDENCE = 50  # Minimum LLM extraction confidence %
 
 # ---------------------------------------------------------------------------
 # App Settings
@@ -49,3 +57,8 @@ CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost
 MAX_UPLOAD_SIZE_MB = 10
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp", "image/tiff"}
 ALLOWED_FILE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif", ".pdf"}
+
+# ---------------------------------------------------------------------------
+# Backward compatibility alias (used in main.py imports)
+# ---------------------------------------------------------------------------
+GROK_API_KEY = GROQ_API_KEY

@@ -1,12 +1,13 @@
 /**
  * CarbonLens — API Service
  * Handles all communication with the FastAPI backend.
+ * All prediction endpoints use real XGBoost ML models with confidence levels.
  */
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8000' : `http://${window.location.hostname}:8000`;
 
 /**
- * Scan a bill image via OCR + Grok AI extraction.
+ * Scan a bill image via OCR + Groq AI extraction.
  * @param {File} file - Image file (JPEG, PNG, etc.) or scanned PDF
  * @returns {Promise<Object>} Structured bill data with confidence scores
  */
@@ -53,7 +54,7 @@ export async function scanBillBase64(base64Data, filename = 'camera_capture.jpg'
  *   Layer 1: PyMuPDF digital text extraction
  *   Layer 2: Tesseract OCR (for scanned/physical bills)
  *   Layer 3: Manual fallback
- * Extracted text is sent to Grok API for structured parsing.
+ * Extracted text is sent to Groq API for structured parsing.
  * @param {File} file - PDF file
  * @returns {Promise<Object>} Parsed bill data
  */
@@ -75,16 +76,24 @@ export async function parsePDF(file) {
 }
 
 /**
- * Forecast future CO2 emissions.
+ * Forecast future CO2 emissions using XGBoost ML model.
+ * Returns predictions with 80% confidence intervals.
  * @param {number[]} monthlyKwh - Historical monthly kWh readings
  * @param {number} horizonDays - 30, 90, or 180
- * @returns {Promise<Object>} Forecast data
+ * @param {string} industry - Industry type
+ * @param {string} state - Indian state
+ * @returns {Promise<Object>} Forecast data with confidence bands
  */
-export async function forecastEmissions(monthlyKwh, horizonDays = 90) {
+export async function forecastEmissions(monthlyKwh, horizonDays = 90, industry = 'textile', state = 'maharashtra') {
   const res = await fetch(`${API_BASE}/forecast`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ monthly_kwh: monthlyKwh, horizon_days: horizonDays }),
+    body: JSON.stringify({
+      monthly_kwh: monthlyKwh,
+      horizon_days: horizonDays,
+      industry,
+      state,
+    }),
   });
 
   if (!res.ok) {
@@ -96,15 +105,23 @@ export async function forecastEmissions(monthlyKwh, horizonDays = 90) {
 }
 
 /**
- * Run what-if scenario simulation.
+ * Run what-if scenario simulation using XGBoost ML model.
+ * Returns CO2/cost savings with confidence intervals.
  * @param {Object} params - Simulation parameters
- * @returns {Promise<Object>} Simulation results
+ * @returns {Promise<Object>} Simulation results with confidence
  */
 export async function simulateScenario(params) {
   const res = await fetch(`${API_BASE}/simulate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify({
+      current_monthly_kwh: params.current_monthly_kwh,
+      ev_percent: params.ev_percent || 0,
+      solar_percent: params.solar_percent || 0,
+      peak_shift_hours: params.peak_shift_hours || 0,
+      industry: params.industry || 'textile',
+      state: params.state || 'maharashtra',
+    }),
   });
 
   if (!res.ok) {
@@ -116,14 +133,16 @@ export async function simulateScenario(params) {
 }
 
 /**
- * Get AI-generated carbon reduction recommendations.
+ * Get AI-generated carbon reduction recommendations with ML-backed scoring.
+ * Uses XGBoost classifier with calibrated confidence.
  * @param {number} monthlyKwh
  * @param {string} industry
- * @returns {Promise<Object>} Recommendations
+ * @param {string} state
+ * @returns {Promise<Object>} Recommendations with grade probabilities
  */
-export async function getRecommendations(monthlyKwh = 8500, industry = 'textile') {
+export async function getRecommendations(monthlyKwh = 8500, industry = 'textile', state = 'maharashtra') {
   const res = await fetch(
-    `${API_BASE}/recommendations?monthly_kwh=${monthlyKwh}&industry=${industry}`
+    `${API_BASE}/recommendations?monthly_kwh=${monthlyKwh}&industry=${industry}&state=${state}`
   );
 
   if (!res.ok) {
@@ -131,6 +150,15 @@ export async function getRecommendations(monthlyKwh = 8500, industry = 'textile'
     throw new Error(err.detail || `Recommendations failed: ${res.status}`);
   }
 
+  return res.json();
+}
+
+/**
+ * Get ML model status and training metrics.
+ * @returns {Promise<Object>} Model status
+ */
+export async function getMLStatus() {
+  const res = await fetch(`${API_BASE}/ml/status`);
   return res.json();
 }
 
@@ -166,16 +194,21 @@ export async function generateReport(params = {}) {
     throw new Error(err.detail || `Report generation failed: ${res.status}`);
   }
 
-  // Download the PDF blob
-  const blob = await res.blob();
+  // Download the PDF blob — force correct MIME type
+  const arrayBuffer = await res.arrayBuffer();
+  const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
+  a.style.display = 'none';
   a.href = url;
-  a.download = `CarbonLens_ESG_Report.pdf`;
+  a.download = 'CarbonLens_ESG_Report.pdf';
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  window.URL.revokeObjectURL(url);
+  // Cleanup after a short delay to ensure download starts
+  setTimeout(() => {
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }, 200);
 }
 
 /**

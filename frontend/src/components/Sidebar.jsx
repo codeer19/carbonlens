@@ -1,4 +1,4 @@
-import { Home, FileUp, TrendingUp, Sliders, Lightbulb, FileText, ArrowLeft } from 'lucide-react';
+import { Home, FileUp, TrendingUp, Sliders, Lightbulb, FileText, ArrowLeft, Leaf } from 'lucide-react';
 import './Sidebar.css';
 
 export default function Sidebar({ activeTab, setActiveTab, onBackToHome }) {
@@ -14,7 +14,7 @@ export default function Sidebar({ activeTab, setActiveTab, onBackToHome }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <span className="logo-icon">🌿</span>
+        <Leaf size={20} className="logo-leaf" />
         <span className="logo-text">CarbonLens</span>
       </div>
       <nav className="sidebar-nav">

@@ -11,7 +11,7 @@ function Footer() {
         <div className="footer-meta">
           <span className="footer-team">Team Kompasz · AI Nexus 2026</span>
           <span className="footer-divider">·</span>
-          <span className="footer-powered">Powered by Grok AI + Tesseract OCR</span>
+          <span className="footer-powered">Powered by Groq AI + Tesseract OCR</span>
         </div>
       </div>
     </footer>

@@ -1,3 +1,4 @@
+import { Zap, DollarSign, Cloud, Calendar, Fuel, Building2, CheckCircle, AlertTriangle } from 'lucide-react'
 import './ScanResults.css'
 
 /**
@@ -14,7 +15,9 @@ function ScanResults({ result, onReset }) {
       <div className="results-card">
         {/* Status Header */}
         <div className={`results-status ${isSuccess ? 'success' : 'failed'}`}>
-          <div className="status-icon">{isSuccess ? '✅' : '⚠️'}</div>
+          <div className="status-icon-wrap">
+            {isSuccess ? <CheckCircle size={22} /> : <AlertTriangle size={22} />}
+          </div>
           <div className="status-info">
             <h3 className="status-title">
               {isSuccess ? 'Data Extracted Successfully' : 'Extraction Issue'}
@@ -28,21 +31,21 @@ function ScanResults({ result, onReset }) {
             {/* Data Grid */}
             <div className="results-grid">
               <DataCard
-                icon="⚡"
+                icon={<Zap size={18} />}
                 label="Electricity Consumed"
                 value={result.kwh_consumed}
                 unit="kWh"
                 highlight
               />
               <DataCard
-                icon="💰"
+                icon={<DollarSign size={18} />}
                 label="Total Amount"
                 value={result.total_amount}
                 unit="₹"
                 prefix="₹"
               />
               <DataCard
-                icon="🌫️"
+                icon={<Cloud size={18} />}
                 label="CO₂ Emissions"
                 value={result.co2_kg}
                 unit="kg CO₂"
@@ -50,26 +53,26 @@ function ScanResults({ result, onReset }) {
                 accent
               />
               <DataCard
-                icon="📅"
+                icon={<Calendar size={18} />}
                 label="Billing Date"
                 value={result.billing_date || result.bill_date}
                 isText
               />
               <DataCard
-                icon="⛽"
+                icon={<Fuel size={18} />}
                 label="Fuel Consumed"
                 value={result.fuel_litres}
                 unit="litres"
               />
               <DataCard
-                icon="🏢"
+                icon={<Building2 size={18} />}
                 label="DISCOM"
                 value={result.discom_name}
                 isText
               />
             </div>
 
-            {/* Confidence Indicators (for scan mode) */}
+            {/* Confidence Indicators */}
             {(result.ocr_confidence > 0 || result.extraction_confidence > 0) && (
               <div className="confidence-section">
                 <h4 className="confidence-title">Confidence Scores</h4>
@@ -87,7 +90,7 @@ function ScanResults({ result, onReset }) {
             {/* Manual Review Warning */}
             {result.needs_manual_review && (
               <div className="review-warning">
-                <span>⚠️</span>
+                <AlertTriangle size={16} />
                 <p>Low confidence detected. Please verify the extracted values before using them.</p>
               </div>
             )}

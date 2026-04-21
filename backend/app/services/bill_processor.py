@@ -1,10 +1,10 @@
 """
 Bill Processing Pipeline for CarbonLens
-Orchestrates: Image Upload → OCR/Vision → Grok Extraction
+Orchestrates: Image Upload → OCR → Groq (Llama 3.3-70B) Extraction
 
 Supports two strategies:
-  1. Tesseract OCR (if installed) → Grok text extraction
-  2. Grok Vision API (send image directly) — works WITHOUT Tesseract
+  1. Tesseract OCR (if installed) → Groq text extraction
+  2. Groq Vision-compatible fallback (Llama 4 Scout) — works WITHOUT Tesseract
 """
 
 from typing import Dict, Any, Optional
@@ -14,6 +14,7 @@ import logging
 import os
 import json
 import re
+from app.core.config import TESSERACT_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +23,15 @@ TESSERACT_AVAILABLE = False
 try:
     import pytesseract
     # Auto-configure Windows path
-    _WIN_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-    if os.path.exists(_WIN_PATH):
-        pytesseract.pytesseract.tesseract_cmd = _WIN_PATH
-    # Quick check if tesseract binary exists
+    if TESSERACT_PATH and os.path.exists(TESSERACT_PATH):
+        pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+    
+    # Quick check if tesseract binary exists and is functional
     pytesseract.get_tesseract_version()
     TESSERACT_AVAILABLE = True
     logger.info("Tesseract OCR is available")
-except Exception:
-    logger.warning("Tesseract OCR not available — using Grok Vision API fallback")
+except Exception as e:
+    logger.warning(f"Tesseract OCR not available: {e} — using Groq Vision fallback")
 
 
 class BillProcessor:
@@ -40,21 +41,23 @@ class BillProcessor:
     Workflow:
     1. Receive image/PDF bytes
     2. Try Tesseract OCR first (if available)
-    3. If Tesseract fails or not installed → use Grok Vision API (multimodal)
-    4. Extract structured data from text via Grok
+    3. If Tesseract fails or not installed → use Groq Vision fallback (PDF→image→OCR→text→Llama)
+    4. Extract structured data from text via Groq (Llama 3.3-70B)
     5. Return structured bill data
     """
     
-    def __init__(self, grok_api_key: Optional[str] = None):
+    def __init__(self, groq_api_key: Optional[str] = None):
         """
         Initialize bill processor.
         
         Args:
-            grok_api_key: Grok API key for structured extraction
+            groq_api_key: Groq API key for structured extraction via Llama 3.3-70B
         """
-        self.grok_api_key = grok_api_key or os.getenv('GROK_API_KEY', '')
-        self.grok_base_url = 'https://api.x.ai/v1/chat/completions'
-        self.grok_model = 'grok-2-latest'
+        self.groq_api_key = groq_api_key or os.getenv('GROQ_API_KEY', '')
+        self.groq_base_url = 'https://api.groq.com/openai/v1/chat/completions'
+        self.groq_model = 'llama-3.3-70b-versatile'
+        # Multimodal model for vision/fallback tasks
+        self.groq_vision_model = 'meta-llama/llama-4-scout-17b-16e-instruct'
         
         # Try to initialize OCR service if Tesseract is available
         self.ocr_service = None
@@ -65,11 +68,11 @@ class BillProcessor:
             except Exception:
                 pass
         
-        # Try to initialize Grok extractor
-        self.grok_extractor = None
+        # Try to initialize Groq extractor
+        self.groq_extractor = None
         try:
-            from .grok_extractor import initialize_grok, GrokExtractor
-            self.grok_extractor = initialize_grok(grok_api_key) if grok_api_key else GrokExtractor()
+            from .grok_extractor import initialize_groq, GroqExtractor
+            self.groq_extractor = initialize_groq(groq_api_key) if groq_api_key else GroqExtractor()
         except Exception:
             pass
         
@@ -83,8 +86,8 @@ class BillProcessor:
         Process a bill image or PDF through the full pipeline.
         
         Strategy:
-        1. If Tesseract available → try OCR first → Grok text extraction
-        2. If Tesseract fails or unavailable → Grok Vision API (send image directly)
+        1. If Tesseract available → try OCR first → Groq text extraction
+        2. If Tesseract fails or unavailable → Groq Vision fallback (render→OCR→extract)
         """
         result = {
             'success': False,
@@ -123,10 +126,10 @@ class BillProcessor:
                 except Exception as e:
                     logger.warning(f"Tesseract OCR failed: {e}")
             
-            # ── STRATEGY 2: Grok Vision API (send image directly) ──
+            # ── STRATEGY 2: Groq Vision fallback (render image + send text to Llama) ──
             if not ocr_text:
-                logger.info("Using Grok Vision API for direct image extraction")
-                vision_result = self._extract_via_grok_vision(file_bytes, file_type)
+                logger.info("Using Groq Vision fallback for direct image extraction")
+                vision_result = self._extract_via_groq_vision(file_bytes, file_type)
                 
                 if vision_result.get('success'):
                     result['data'] = vision_result['data']
@@ -134,21 +137,21 @@ class BillProcessor:
                         'success': True,
                         'text': vision_result.get('raw_text', ''),
                         'confidence': vision_result.get('confidence', 75),
-                        'method': 'grok_vision'
+                        'method': 'groq_vision'
                     }
                     result['success'] = True
                     result['needs_manual_review'] = vision_result.get('confidence', 75) < 60
-                    logger.info("Grok Vision extraction successful")
+                    logger.info("Groq Vision extraction successful")
                     return result
                 else:
                     result['error'] = vision_result.get('error', 'Vision extraction failed')
                     result['needs_manual_review'] = True
                     return result
             
-            # ── If we have OCR text, extract structured data with Grok ──
+            # ── If we have OCR text, extract structured data with Groq ──
             if ocr_text and len(ocr_text.strip()) > 20:
-                if self.grok_extractor:
-                    extraction_result = self.grok_extractor.extract(ocr_text)
+                if self.groq_extractor:
+                    extraction_result = self.groq_extractor.extract(ocr_text)
                     result['extraction'] = extraction_result
                     
                     if extraction_result.get('success'):
@@ -161,9 +164,9 @@ class BillProcessor:
                         if ocr_confidence < self.ocr_min_confidence or extraction_confidence < self.extraction_min_confidence:
                             result['needs_manual_review'] = True
                     else:
-                        # Grok text extraction failed, try vision as fallback
-                        logger.info("Grok text extraction failed, trying vision API")
-                        vision_result = self._extract_via_grok_vision(file_bytes, file_type)
+                        # Groq text extraction failed, try vision as fallback
+                        logger.info("Groq text extraction failed, trying vision fallback")
+                        vision_result = self._extract_via_groq_vision(file_bytes, file_type)
                         if vision_result.get('success'):
                             result['data'] = vision_result['data']
                             result['success'] = True
@@ -174,7 +177,7 @@ class BillProcessor:
                     result['error'] = 'No extraction service available'
                     result['needs_manual_review'] = True
             else:
-                result['error'] = 'Could not extract text from the file'
+                result['error'] = 'Could not extract text from image. Tesseract OCR may not be installed or configured correctly.'
                 result['needs_manual_review'] = True
                 
         except Exception as e:
@@ -184,16 +187,19 @@ class BillProcessor:
         
         return result
     
-    def _extract_via_grok_vision(self, file_bytes: bytes, file_type: str) -> Dict[str, Any]:
+    def _extract_via_groq_vision(self, file_bytes: bytes, file_type: str) -> Dict[str, Any]:
         """
-        Send image directly to Grok Vision API for extraction.
-        This works WITHOUT Tesseract — Grok handles the OCR internally.
+        Send image directly to Groq Vision API (Llama 3.2-90B-Vision-Preview) for extraction.
+        This works WITHOUT Tesseract — Groq handles the vision extraction natively.
         """
-        if not self.grok_api_key:
+        if not self.groq_api_key:
             return {
                 'success': False,
-                'error': 'Grok API key not configured. Set GROK_API_KEY in .env file.'
+                'error': 'Groq API key not configured. Set GROQ_API_KEY in .env file.'
             }
+        
+        # Override the vision model specifically for this fallback
+        self.groq_vision_model = 'meta-llama/llama-4-scout-17b-16e-instruct'
         
         try:
             import requests
@@ -229,7 +235,7 @@ class BillProcessor:
                 else:
                     mime_type = 'image/jpeg'  # default
             
-            # Build Grok Vision request
+            # Build Groq Vision request
             prompt = """You are an expert at extracting structured data from Indian utility bills.
 This is an image of an electricity bill, fuel invoice, or gas bill.
 Extract the following fields and return ONLY a valid JSON object (no markdown, no explanation):
@@ -254,25 +260,25 @@ Rules:
 5. Return ONLY the JSON object"""
 
             headers = {
-                'Authorization': f'Bearer {self.grok_api_key}',
+                'Authorization': f'Bearer {self.groq_api_key}',
                 'Content-Type': 'application/json'
             }
             
             payload = {
-                'model': self.grok_model,
+                'model': self.groq_vision_model,
                 'messages': [
                     {
                         'role': 'user',
                         'content': [
                             {
+                                'type': 'text',
+                                'text': prompt
+                            },
+                            {
                                 'type': 'image_url',
                                 'image_url': {
                                     'url': f'data:{mime_type};base64,{b64_image}'
                                 }
-                            },
-                            {
-                                'type': 'text',
-                                'text': prompt
                             }
                         ]
                     }
@@ -282,7 +288,7 @@ Rules:
             }
             
             response = requests.post(
-                self.grok_base_url,
+                self.groq_base_url,
                 headers=headers,
                 json=payload,
                 timeout=45
@@ -291,7 +297,7 @@ Rules:
             if response.status_code != 200:
                 return {
                     'success': False,
-                    'error': f'Grok Vision API error: {response.status_code} - {response.text[:300]}'
+                    'error': f'Groq Vision API error: {response.status_code} - {response.text[:300]}'
                 }
             
             resp_json = response.json()
@@ -334,13 +340,13 @@ Rules:
                 'data': data,
                 'raw_text': response_text,
                 'confidence': confidence,
-                'method': 'grok_vision'
+                'method': 'groq_vision'
             }
             
         except json.JSONDecodeError as e:
-            return {'success': False, 'error': f'Could not parse Grok response as JSON: {e}'}
+            return {'success': False, 'error': f'Could not parse Groq response as JSON: {e}'}
         except Exception as e:
-            return {'success': False, 'error': f'Grok Vision extraction failed: {e}'}
+            return {'success': False, 'error': f'Groq Vision extraction failed: {e}'}
     
     def _validate_extracted_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -399,6 +405,6 @@ Rules:
 
 
 # Factory function for dependency injection
-def get_bill_processor(grok_api_key: Optional[str] = None) -> BillProcessor:
+def get_bill_processor(groq_api_key: Optional[str] = None) -> BillProcessor:
     """Get or create BillProcessor instance."""
-    return BillProcessor(grok_api_key=grok_api_key)
+    return BillProcessor(groq_api_key=groq_api_key)

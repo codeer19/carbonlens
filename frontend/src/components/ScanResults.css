@@ -35,8 +35,16 @@
   border: 1px solid #FECACA;
 }
 
-.status-icon {
-  font-size: 1.5rem;
+.status-icon-wrap {
+  flex-shrink: 0;
+}
+
+.results-status.success .status-icon-wrap {
+  color: #166534;
+}
+
+.results-status.failed .status-icon-wrap {
+  color: #991B1B;
 }
 
 .status-title {

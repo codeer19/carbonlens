@@ -18,7 +18,7 @@ CarbonLens is a full-stack web application that helps Indian Small and Medium En
 | Frontend   | React 19 + Vite 8, Recharts, Lucide Icons     |
 | Backend    | FastAPI (Python), Uvicorn                      |
 | OCR        | Tesseract OCR (pytesseract) + Pillow + OpenCV  |
-| AI / LLM   | Grok API (xAI) — text extraction & vision     |
+| AI / LLM   | Groq API (Llama 3.3-70B) — text extraction            |
 | PDF Parse  | PyMuPDF (fitz) — digital PDF text extraction   |
 | Reports    | FPDF2 — ESG PDF report generation              |
 | Styling    | Vanilla CSS (Inter font, minimal light theme)  |
@@ -39,7 +39,7 @@ carbonlens/
 │   │   ├── services/
 │   │   │   ├── bill_processor.py # Main OCR + Grok pipeline orchestrator
 │   │   │   ├── ocr_service.py    # Tesseract OCR wrapper (image preprocessing)
-│   │   │   ├── grok_extractor.py # Grok API text → structured JSON extraction
+│   │   │   ├── grok_extractor.py # Groq API text → structured JSON extraction
 │   │   │   └── report_generator.py # ESG PDF report builder (FPDF2)
 │   │   ├── routers/              # (Placeholder route files)
 │   │   ├── models/
@@ -81,10 +81,10 @@ carbonlens/
 | Method | Endpoint              | Description                                    |
 |--------|-----------------------|------------------------------------------------|
 | GET    | `/`                   | Health check — returns app status               |
-| GET    | `/health`             | Detailed health check (Tesseract, Grok status) |
-| POST   | `/scan`               | Scan bill image via OCR + Grok AI extraction    |
+| GET    | `/health`             | Detailed health check (Tesseract, Groq status) |
+| POST   | `/scan`               | Scan bill image via OCR + Groq AI extraction    |
 | POST   | `/scan/base64`        | Scan from base64-encoded image (camera capture)|
-| POST   | `/parse`              | Parse PDF bill (PyMuPDF + OCR + Grok)           |
+| POST   | `/parse`              | Parse PDF bill (PyMuPDF + OCR + Groq)           |
 | POST   | `/forecast`           | Predict CO₂ for 30/90/180 days                 |
 | POST   | `/simulate`           | Run what-if scenario simulation                 |
 | GET    | `/recommendations`    | Get AI reduction recommendations (EN + HI)     |
@@ -96,18 +96,18 @@ carbonlens/
 
 CarbonLens uses a dual-strategy approach for scanning bills:
 
-### Strategy 1: Tesseract OCR → Grok Text Extraction
+### Strategy 1: Tesseract OCR → Groq Text Extraction (Llama 3.3-70B)
 1. Image received → preprocessed (grayscale, threshold, denoise)
 2. Tesseract OCR extracts raw text from the image
-3. Raw text sent to Grok API with structured extraction prompt
-4. Grok returns JSON with kWh, amount, dates, DISCOM, etc.
+3. Raw text sent to Groq API with structured extraction prompt
+4. Llama 3.3-70B returns JSON with kWh, amount, dates, DISCOM, etc.
 5. CO₂ calculated using India grid factor (0.716 kg CO₂/kWh)
 
-### Strategy 2: Grok Vision API (Fallback)
+### Strategy 2: Groq Vision Fallback
 1. If Tesseract is unavailable or returns poor text
-2. Image encoded as base64 → sent directly to Grok Vision
-3. Grok reads the image and extracts structured data
-4. Works without Tesseract installed
+2. Image/PDF is rendered to text via PyMuPDF or Tesseract fallback
+3. Extracted text is sent to Groq Llama 3.3-70B
+4. Works as a bridge for environments with/without Tesseract
 
 ### Three-Layer PDF Parser
 1. **Layer 1:** PyMuPDF digital text extraction
@@ -196,7 +196,7 @@ Frontend runs on `http://localhost:5173`, backend on `http://localhost:8000`.
 
 ### Environment Variables (.env)
 ```
-GROK_API_KEY=your_grok_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 DATABASE_URL=sqlite:///./carbonlens.db
 ENVIRONMENT=development
 DEBUG=true
@@ -212,7 +212,7 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 - `pytesseract`, `pillow`, `opencv-python` — OCR pipeline
 - `fpdf2` — PDF report generation
 - `PyMuPDF` — PDF text extraction
-- `requests` — Grok API calls
+- `requests` — Groq API calls
 - `python-dotenv` — Environment config
 - `pydantic` — Data validation
 

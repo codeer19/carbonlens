@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { Camera, Image, FileText, RotateCcw, X, Upload, Search, ArrowRight } from 'lucide-react'
 import { scanBill, scanBillBase64, parsePDF } from '../services/api'
 import './BillScanner.css'
 
@@ -6,7 +7,7 @@ import './BillScanner.css'
  * BillScanner — Triple-mode bill scanning component.
  * 
  * Mode 1: "Camera"       — Live webcam capture → /scan/base64
- * Mode 2: "Upload Image" — File upload → /scan (Tesseract OCR + Grok)
+ * Mode 2: "Upload Image" — File upload → /scan (Tesseract OCR + Groq)
  * Mode 3: "Upload PDF"   — PDF upload → /parse (Three-layer parser)
  */
 function BillScanner({ onScanComplete }) {
@@ -21,41 +22,32 @@ function BillScanner({ onScanComplete }) {
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState(null)
   const [capturedImage, setCapturedImage] = useState(null)
-  const [facingMode, setFacingMode] = useState('environment') // rear camera by default
+  const [facingMode, setFacingMode] = useState('environment')
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
 
   const fileInputRef = useRef(null)
 
-  // Accepted file types per mode
   const acceptTypes = {
     camera: '',
     scan: '.jpg,.jpeg,.png,.webp,.bmp,.tiff,.tif',
     pdf: '.pdf',
   }
 
-  // ── Camera Functions ──
+  // Camera Functions
   const startCamera = useCallback(async () => {
     setCameraError(null)
     try {
-      // Stop any existing stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop())
       }
-
       const constraints = {
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
+        video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       }
-
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
-
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         videoRef.current.play()
@@ -87,15 +79,12 @@ function BillScanner({ onScanComplete }) {
 
   const captureFrame = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
-
     const video = videoRef.current
     const canvas = canvasRef.current
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
-
     const ctx = canvas.getContext('2d')
     ctx.drawImage(video, 0, 0)
-
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
     setCapturedImage(dataUrl)
     stopCamera()
@@ -111,23 +100,17 @@ function BillScanner({ onScanComplete }) {
     setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')
   }, [])
 
-  // Restart camera when facing mode changes
   useEffect(() => {
-    if (cameraActive) {
-      startCamera()
-    }
+    if (cameraActive) startCamera()
   }, [facingMode])
 
-  // Cleanup camera on unmount or mode switch
   useEffect(() => {
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop())
-      }
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
     }
   }, [])
 
-  // ── Mode Switch ──
+  // Mode Switch
   const handleModeSwitch = (mode) => {
     stopCamera()
     setCapturedImage(null)
@@ -138,7 +121,7 @@ function BillScanner({ onScanComplete }) {
     setCameraError(null)
   }
 
-  // ── File Handling ──
+  // File Handling
   const handleFileSelect = (e) => {
     const selected = e.target.files?.[0]
     if (selected) processSelectedFile(selected)
@@ -146,12 +129,10 @@ function BillScanner({ onScanComplete }) {
 
   const processSelectedFile = (selected) => {
     setError(null)
-
     if (selected.size > 10 * 1024 * 1024) {
       setError('File too large. Maximum 10 MB.')
       return
     }
-
     const ext = selected.name.split('.').pop().toLowerCase()
     if (activeMode === 'pdf' && ext !== 'pdf') {
       setError('Please select a PDF file in PDF mode.')
@@ -161,9 +142,7 @@ function BillScanner({ onScanComplete }) {
       setError('Please select an image file (JPEG, PNG, WebP, BMP, TIFF).')
       return
     }
-
     setFile(selected)
-
     if (activeMode === 'scan') {
       const reader = new FileReader()
       reader.onload = (ev) => setPreview(ev.target.result)
@@ -173,7 +152,6 @@ function BillScanner({ onScanComplete }) {
     }
   }
 
-  // Drag & drop
   const handleDragOver = (e) => { e.preventDefault(); setDragOver(true) }
   const handleDragLeave = (e) => { e.preventDefault(); setDragOver(false) }
   const handleDrop = (e) => {
@@ -183,14 +161,12 @@ function BillScanner({ onScanComplete }) {
     if (dropped) processSelectedFile(dropped)
   }
 
-  // ── Submit ──
+  // Submit
   const handleSubmit = async () => {
     setLoading(true)
     setError(null)
-
     try {
       let result
-
       if (activeMode === 'camera') {
         if (!capturedImage) return
         result = await scanBillBase64(capturedImage, 'camera_capture.jpg')
@@ -202,6 +178,10 @@ function BillScanner({ onScanComplete }) {
       } else {
         if (!file) return
         result = await parsePDF(file)
+        if (result.success === false) {
+          setError(result.error || 'Could not extract data from this PDF. Please try manual entry or a clearer scan.')
+          return
+        }
         onScanComplete({
           success: true,
           kwh_consumed: result.kwh_consumed,
@@ -241,7 +221,7 @@ function BillScanner({ onScanComplete }) {
             onClick={() => handleModeSwitch('camera')}
             id="mode-btn-camera"
           >
-            <span className="mode-icon">📷</span>
+            <Camera size={20} className="mode-icon-svg" />
             <span className="mode-label">Camera Scan</span>
             <span className="mode-desc">Scan hard copy directly</span>
           </button>
@@ -250,7 +230,7 @@ function BillScanner({ onScanComplete }) {
             onClick={() => handleModeSwitch('scan')}
             id="mode-btn-scan"
           >
-            <span className="mode-icon">🖼️</span>
+            <Image size={20} className="mode-icon-svg" />
             <span className="mode-label">Upload Image</span>
             <span className="mode-desc">Upload bill photo</span>
           </button>
@@ -259,29 +239,29 @@ function BillScanner({ onScanComplete }) {
             onClick={() => handleModeSwitch('pdf')}
             id="mode-btn-pdf"
           >
-            <span className="mode-icon">📄</span>
+            <FileText size={20} className="mode-icon-svg" />
             <span className="mode-label">Upload PDF</span>
             <span className="mode-desc">Digital PDF bill</span>
           </button>
         </div>
 
-        {/* ── Camera Mode ── */}
+        {/* Camera Mode */}
         {activeMode === 'camera' && (
           <div className="camera-section">
             {!cameraActive && !capturedImage && (
               <div className="camera-start-zone">
-                <div className="camera-icon-large">📸</div>
+                <div className="camera-icon-large"><Camera size={32} /></div>
                 <h3 className="camera-title">Scan Your Bill</h3>
                 <p className="camera-hint">
                   Place your electricity bill, fuel invoice, or gas bill in front of the camera.
                   Make sure the text is clearly visible and well-lit.
                 </p>
                 <button className="btn btn-primary camera-start-btn" onClick={startCamera} id="btn-start-camera">
-                  📷 Open Camera
+                  Open Camera
                 </button>
                 {cameraError && (
                   <div className="scanner-error camera-error-msg">
-                    <span className="error-icon">⚠️</span>
+                    <span className="error-icon">!</span>
                     <span>{cameraError}</span>
                   </div>
                 )}
@@ -291,14 +271,7 @@ function BillScanner({ onScanComplete }) {
             {cameraActive && !capturedImage && (
               <div className="camera-live-zone">
                 <div className="video-container">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="camera-video"
-                    id="camera-video"
-                  />
+                  <video ref={videoRef} autoPlay playsInline muted className="camera-video" id="camera-video" />
                   <div className="camera-overlay">
                     <div className="scan-frame">
                       <div className="corner tl"></div>
@@ -311,7 +284,7 @@ function BillScanner({ onScanComplete }) {
                 </div>
                 <div className="camera-controls">
                   <button className="cam-ctrl-btn" onClick={toggleCamera} title="Switch Camera">
-                    🔄
+                    <RotateCcw size={18} />
                   </button>
                   <button className="cam-capture-btn" onClick={captureFrame} id="btn-capture" title="Capture">
                     <div className="capture-ring">
@@ -319,7 +292,7 @@ function BillScanner({ onScanComplete }) {
                     </div>
                   </button>
                   <button className="cam-ctrl-btn" onClick={stopCamera} title="Close Camera">
-                    ✕
+                    <X size={18} />
                   </button>
                 </div>
               </div>
@@ -329,10 +302,10 @@ function BillScanner({ onScanComplete }) {
               <div className="captured-preview">
                 <div className="captured-image-wrap">
                   <img src={capturedImage} alt="Captured bill" className="captured-image" />
-                  <div className="captured-badge">✓ Photo Captured</div>
+                  <div className="captured-badge">Photo Captured</div>
                 </div>
                 <button className="btn btn-ghost retake-btn" onClick={retakePhoto}>
-                  📷 Retake Photo
+                  <Camera size={14} /> Retake Photo
                 </button>
               </div>
             )}
@@ -341,7 +314,7 @@ function BillScanner({ onScanComplete }) {
           </div>
         )}
 
-        {/* ── Upload Zone (for scan & pdf modes) ── */}
+        {/* Upload Zone */}
         {(activeMode === 'scan' || activeMode === 'pdf') && (
           <div
             className={`upload-zone ${dragOver ? 'drag-over' : ''} ${file ? 'has-file' : ''}`}
@@ -363,12 +336,10 @@ function BillScanner({ onScanComplete }) {
             {!file ? (
               <div className="upload-prompt">
                 <div className="upload-icon-circle">
-                  {activeMode === 'scan' ? '🖼️' : '📄'}
+                  {activeMode === 'scan' ? <Image size={24} /> : <FileText size={24} />}
                 </div>
                 <p className="upload-title">
-                  {activeMode === 'scan'
-                    ? 'Drop your bill image here'
-                    : 'Drop your PDF bill here'}
+                  {activeMode === 'scan' ? 'Drop your bill image here' : 'Drop your PDF bill here'}
                 </p>
                 <p className="upload-hint">
                   or <span className="upload-browse">browse files</span>
@@ -385,12 +356,12 @@ function BillScanner({ onScanComplete }) {
                   <div className="image-preview-wrap">
                     <img src={preview} alt="Bill preview" className="image-preview" />
                     <div className="preview-overlay">
-                      <span className="preview-ready">✓ Ready to process</span>
+                      <span className="preview-ready">Ready to process</span>
                     </div>
                   </div>
                 ) : (
                   <div className="pdf-preview">
-                    <div className="pdf-icon">📄</div>
+                    <div className="pdf-icon-wrap"><FileText size={28} /></div>
                     <div className="pdf-info">
                       <p className="pdf-name">{file.name}</p>
                       <p className="pdf-size">{(file.size / 1024).toFixed(1)} KB</p>
@@ -406,35 +377,35 @@ function BillScanner({ onScanComplete }) {
         <div className="pipeline-info">
           {activeMode === 'camera' ? (
             <div className="pipeline-steps">
-              <span className="pip-step">📷 Camera</span>
-              <span className="pip-arrow">→</span>
-              <span className="pip-step">🔍 OCR / Vision</span>
-              <span className="pip-arrow">→</span>
-              <span className="pip-step">🤖 Grok AI</span>
-              <span className="pip-arrow">→</span>
-              <span className="pip-step">📊 Data</span>
+              <span className="pip-step">Camera</span>
+              <ArrowRight size={12} className="pip-arrow-icon" />
+              <span className="pip-step">OCR / Vision</span>
+              <ArrowRight size={12} className="pip-arrow-icon" />
+              <span className="pip-step">Groq AI</span>
+              <ArrowRight size={12} className="pip-arrow-icon" />
+              <span className="pip-step">Structured Data</span>
             </div>
           ) : activeMode === 'scan' ? (
             <div className="pipeline-steps">
-              <span className="pip-step">🖼️ Image</span>
-              <span className="pip-arrow">→</span>
-              <span className="pip-step">🔍 Tesseract OCR</span>
-              <span className="pip-arrow">→</span>
-              <span className="pip-step">🤖 Grok AI</span>
-              <span className="pip-arrow">→</span>
-              <span className="pip-step">📊 Data</span>
+              <span className="pip-step">Image</span>
+              <ArrowRight size={12} className="pip-arrow-icon" />
+              <span className="pip-step">Tesseract OCR</span>
+              <ArrowRight size={12} className="pip-arrow-icon" />
+              <span className="pip-step">Groq AI</span>
+              <ArrowRight size={12} className="pip-arrow-icon" />
+              <span className="pip-step">Structured Data</span>
             </div>
           ) : (
             <div className="pipeline-steps">
-              <span className="pip-step">📄 PDF</span>
-              <span className="pip-arrow">→</span>
-              <span className="pip-step">📝 Text Extract</span>
-              <span className="pip-arrow">→</span>
-              <span className="pip-step">🔍 OCR Fallback</span>
-              <span className="pip-arrow">→</span>
-              <span className="pip-step">🤖 Grok AI</span>
-              <span className="pip-arrow">→</span>
-              <span className="pip-step">📊 Data</span>
+              <span className="pip-step">PDF</span>
+              <ArrowRight size={12} className="pip-arrow-icon" />
+              <span className="pip-step">Text Extract</span>
+              <ArrowRight size={12} className="pip-arrow-icon" />
+              <span className="pip-step">OCR Fallback</span>
+              <ArrowRight size={12} className="pip-arrow-icon" />
+              <span className="pip-step">Groq AI</span>
+              <ArrowRight size={12} className="pip-arrow-icon" />
+              <span className="pip-step">Structured Data</span>
             </div>
           )}
         </div>
@@ -442,7 +413,7 @@ function BillScanner({ onScanComplete }) {
         {/* Error */}
         {error && (
           <div className="scanner-error" id="scanner-error">
-            <span className="error-icon">⚠️</span>
+            <span className="error-icon">!</span>
             <span>{error}</span>
           </div>
         )}
@@ -467,7 +438,8 @@ function BillScanner({ onScanComplete }) {
               </>
             ) : (
               <>
-                {activeMode === 'camera' ? '🔍 Scan & Extract' : activeMode === 'scan' ? '🔍 Scan & Extract' : '📄 Parse PDF'}
+                <Search size={16} />
+                {activeMode === 'camera' ? 'Scan & Extract' : activeMode === 'scan' ? 'Scan & Extract' : 'Parse PDF'}
               </>
             )}
           </button>

@@ -42,8 +42,12 @@
   box-shadow: 0 0 0 1px #111;
 }
 
-.mode-icon {
-  font-size: 20px;
+.mode-icon-svg {
+  color: var(--text-secondary, #888);
+}
+
+.mode-btn.active .mode-icon-svg {
+  color: var(--text-primary, #111);
 }
 
 .mode-label {
@@ -75,7 +79,6 @@
 }
 
 .camera-icon-large {
-  font-size: 48px;
   width: 80px;
   height: 80px;
   display: flex;
@@ -83,6 +86,7 @@
   justify-content: center;
   background: #F5F5F3;
   border-radius: 50%;
+  color: var(--text-secondary, #888);
 }
 
 .camera-title {
@@ -348,7 +352,6 @@
 }
 
 .upload-icon-circle {
-  font-size: 32px;
   width: 60px;
   height: 60px;
   display: flex;
@@ -357,6 +360,7 @@
   background: #F5F5F3;
   border-radius: 50%;
   margin-bottom: 4px;
+  color: var(--text-secondary, #888);
 }
 
 .upload-title {
@@ -426,8 +430,11 @@
   padding: 12px;
 }
 
-.pdf-icon {
-  font-size: 36px;
+.pdf-icon-wrap {
+  color: var(--text-secondary, #888);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pdf-info {
@@ -471,9 +478,9 @@
   white-space: nowrap;
 }
 
-.pip-arrow {
-  font-size: 12px;
+.pip-arrow-icon {
   color: var(--text-secondary, #ccc);
+  flex-shrink: 0;
 }
 
 /* ── Error ── */
@@ -491,6 +498,16 @@
 
 .error-icon {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #991B1B;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 /* ── Actions ── */
@@ -503,7 +520,20 @@
 /* ── Responsive ── */
 @media (max-width: 600px) {
   .mode-toggle {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  
+  .mode-btn {
+    padding: 10px 4px;
+  }
+  
+  .mode-label {
+    font-size: 11px;
+  }
+  
+  .mode-desc {
+    display: none;
   }
   
   .video-container {

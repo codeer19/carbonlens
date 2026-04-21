@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Leaf, Zap, BarChart3, Shield, ArrowRight, Scan, Brain, FileText, ChevronRight } from 'lucide-react';
+import { Leaf, Zap, BarChart3, Shield, ArrowRight, Scan, Brain, FileText, ChevronRight, CheckCircle, Lock, Globe } from 'lucide-react';
 import './Homepage.css';
 
 export default function Homepage({ onGetStarted }) {
@@ -12,11 +12,11 @@ export default function Homepage({ onGetStarted }) {
 
   return (
     <div className="homepage" id="homepage">
-      {/* ── Navigation Bar ── */}
+      {/* Navigation Bar */}
       <nav className="home-nav" id="home-nav">
         <div className="home-nav-inner">
           <div className="home-nav-brand">
-            <span className="home-nav-icon">🌿</span>
+            <Leaf size={20} className="brand-icon" />
             <span className="home-nav-name">CarbonLens</span>
           </div>
           <div className="home-nav-links">
@@ -25,10 +25,6 @@ export default function Homepage({ onGetStarted }) {
             <a href="#impact" className="home-nav-link">Impact</a>
           </div>
           <div className="home-nav-actions">
-            <span className="home-nav-badge">
-              <span className="badge-dot"></span>
-              AI Nexus 2026
-            </span>
             <button className="home-nav-cta" onClick={onGetStarted}>
               Get Started <ArrowRight size={14} />
             </button>
@@ -36,7 +32,7 @@ export default function Homepage({ onGetStarted }) {
         </div>
       </nav>
 
-      {/* ── Hero Section ── */}
+      {/* Hero Section */}
       <section className="hero" id="hero">
         <div className="hero-bg-pattern"></div>
         <div className="hero-content">
@@ -64,11 +60,11 @@ export default function Homepage({ onGetStarted }) {
             </a>
           </div>
           <div className="hero-trust">
-            <span className="trust-item">✅ No sign-up required</span>
+            <span className="trust-item"><CheckCircle size={14} /> No sign-up required</span>
             <span className="trust-divider">·</span>
-            <span className="trust-item">🔒 Privacy-first</span>
+            <span className="trust-item"><Lock size={14} /> Privacy-first</span>
             <span className="trust-divider">·</span>
-            <span className="trust-item">🇮🇳 Made for India</span>
+            <span className="trust-item"><Globe size={14} /> Made for India</span>
           </div>
         </div>
 
@@ -92,7 +88,7 @@ export default function Homepage({ onGetStarted }) {
         </div>
       </section>
 
-      {/* ── Features Section ── */}
+      {/* Features Section */}
       <section className="features-section" id="features">
         <div className="section-inner">
           <div className="section-header">
@@ -136,14 +132,14 @@ export default function Homepage({ onGetStarted }) {
             <FeatureCard
               icon={<FileText size={24} />}
               title="ESG PDF Reports"
-              description="Auto-generate comprehensive ESG compliance reports with charts, metrics, and recommendations. Download as PDF."
+              description="Auto-generate comprehensive ESG compliance reports with charts, metrics, and recommendations."
               tag="Compliance"
             />
           </div>
         </div>
       </section>
 
-      {/* ── How It Works ── */}
+      {/* How It Works */}
       <section className="how-section" id="how-it-works">
         <div className="section-inner">
           <div className="section-header">
@@ -156,7 +152,7 @@ export default function Homepage({ onGetStarted }) {
               number="01"
               title="Upload Your Bill"
               description="Take a photo or upload a PDF of your electricity bill or fuel invoice. We support all Indian DISCOMs."
-              icon="📷"
+              icon={<Scan size={28} />}
             />
             <div className="step-connector">
               <ArrowRight size={20} />
@@ -164,8 +160,8 @@ export default function Homepage({ onGetStarted }) {
             <StepCard
               number="02"
               title="AI Extracts Data"
-              description="Our OCR + Grok AI pipeline reads the bill, extracts kWh consumed, billing amount, dates, and more."
-              icon="🤖"
+              description="Our OCR + AI pipeline reads the bill, extracts kWh consumed, billing amount, dates, and more."
+              icon={<Brain size={28} />}
             />
             <div className="step-connector">
               <ArrowRight size={20} />
@@ -174,13 +170,13 @@ export default function Homepage({ onGetStarted }) {
               number="03"
               title="Get Insights"
               description="View your CO₂ emissions, carbon score, AI recommendations, and download ESG-ready PDF reports."
-              icon="📊"
+              icon={<BarChart3 size={28} />}
             />
           </div>
         </div>
       </section>
 
-      {/* ── Impact Section ── */}
+      {/* Impact Section */}
       <section className="impact-section" id="impact">
         <div className="section-inner">
           <div className="section-header">
@@ -207,10 +203,12 @@ export default function Homepage({ onGetStarted }) {
         </div>
       </section>
 
-      {/* ── CTA Section ── */}
+      {/* CTA Section */}
       <section className="cta-section">
         <div className="cta-inner">
-          <div className="cta-icon">🌿</div>
+          <div className="cta-icon-wrap">
+            <Leaf size={32} className="cta-leaf-icon" />
+          </div>
           <h2 className="cta-title">Ready to Track Your Carbon Footprint?</h2>
           <p className="cta-desc">
             Start scanning your utility bills and get instant carbon insights. No sign-up needed.
@@ -223,17 +221,15 @@ export default function Homepage({ onGetStarted }) {
         </div>
       </section>
 
-      {/* ── Footer ── */}
+      {/* Footer */}
       <footer className="home-footer">
         <div className="home-footer-inner">
           <div className="home-footer-brand">
-            <span>🌿 CarbonLens</span>
+            <span><Leaf size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }} />CarbonLens</span>
             <p>India's first SME carbon intelligence platform</p>
           </div>
           <div className="home-footer-meta">
-            <span>Team Kompasz · AI Nexus 2026</span>
-            <span className="home-footer-divider">·</span>
-            <span>Powered by Grok AI + Tesseract OCR</span>
+            <span>© {new Date().getFullYear()} CarbonLens</span>
           </div>
         </div>
       </footer>
